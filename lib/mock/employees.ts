@@ -1,0 +1,73 @@
+import type { Employee } from "../types";
+
+export const initialEmployees: Employee[] = [
+  {
+    id: "emp-sarah",
+    name: "Sarah Chen",
+    email: "admin@pathways.com",
+    password: "demo1234",
+    role: "Admin",
+    status: "Active",
+    department: "Operations",
+    createdAt: "2023-01-15T09:00:00.000Z",
+  },
+  {
+    id: "emp-maya",
+    name: "Maya Patel",
+    email: "maya@pathways.com",
+    password: "demo1234",
+    role: "Employee",
+    status: "Active",
+    department: "Curriculum",
+    createdAt: "2023-03-02T09:00:00.000Z",
+  },
+  {
+    id: "emp-jordan",
+    name: "Jordan Lee",
+    email: "jordan@pathways.com",
+    password: "demo1234",
+    role: "Employee",
+    status: "Active",
+    department: "Sales",
+    createdAt: "2023-06-19T09:00:00.000Z",
+  },
+  {
+    id: "emp-tom",
+    name: "Tom Okoye",
+    email: "tom@pathways.com",
+    password: "demo1234",
+    role: "Employee",
+    status: "Active",
+    department: "Curriculum",
+    createdAt: "2024-01-08T09:00:00.000Z",
+  },
+  {
+    id: "emp-priya",
+    name: "Priya Nair",
+    email: "priya@pathways.com",
+    password: "demo1234",
+    role: "Employee",
+    status: "Active",
+    department: "Design",
+    createdAt: "2024-04-22T09:00:00.000Z",
+  },
+  {
+    id: "emp-grace",
+    name: "Grace Liu",
+    email: "grace@pathways.com",
+    password: "demo1234",
+    role: "Employee",
+    status: "Terminated",
+    department: "Sales",
+    createdAt: "2023-09-11T09:00:00.000Z",
+  },
+];
+
+export const salaryByEmployeeId: Record<string, number> = {
+  "emp-sarah": 5200,
+  "emp-maya": 3800,
+  "emp-jordan": 4100,
+  "emp-tom": 3600,
+  "emp-priya": 3400,
+  "emp-grace": 3100,
+};
