@@ -17,7 +17,7 @@ export default function KpiCard({
 }) {
   const iconTone: Record<string, string> = {
     neutral: "bg-bg text-ink-muted",
-    accent: "bg-accent-soft text-accent",
+    accent: "bg-accent-soft text-accent-dark",
     ok: "bg-ok-soft text-ok",
     warn: "bg-warn-soft text-warn",
     danger: "bg-danger-soft text-danger",

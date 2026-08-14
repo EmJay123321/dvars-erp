@@ -51,15 +51,15 @@ Light app, dark "ledger" sidebar — distinct from `design.md`, do not merge the
 | `--bg` | `#F5F6F8` | page background |
 | `--surface` | `#FFFFFF` | cards, panels |
 | `--border` | `#E3E6EC` | hairlines |
-| `--ink` / `--ink-muted` / `--ink-faint` | `#14181F` / `#6B7280` / `#9CA3AF` | text |
-| `--accent` / `--accent-dark` / `--accent-soft` | `#1B6E5B` / `#14584A` / `#E4F2EE` | primary actions, links, active states |
+| `--ink` / `--ink-muted` / `--ink-faint` | `#2B3139` / `#6B7280` / `#9CA3AF` | text |
+| `--accent` / `--accent-dark` / `--accent-soft` | `#1DC8CD` / `#0B7E85` / `#E0F6F7` | primary actions, links, active states |
 | `--ok` / `--warn` / `--danger` (+ `-soft` tints) | green / amber / red | status pills (Paid/Active, Pending/Resigned, Overdue/Terminated) |
-| `--rail-bg` | `#0F1F1B` | sidebar + login brand panel background |
-| `--rail-accent` | `#34B294` | active nav indicator, sidebar accents |
+| `--rail-bg` | `#2B3139` | sidebar + login brand panel background |
+| `--rail-accent` | `#1DC8CD` | active nav indicator, sidebar accents |
 
 **Type**
-- Space Grotesk (500/600/700, italic 600 for "signature" moments) — headings, brand wordmark
-- Inter (400/500/600) — body and UI text
+- Montserrat (500/600/700/800) — headings, brand wordmark
+- Lato (400/700) — body and UI text
 - IBM Plex Mono (500/600, tabular figures) — every monetary and numeric value, this is a deliberate signature detail (ledger feel)
 
 **Layout signature**: collapsible left sidebar (icon rail at 68px, expands to 232px on click-to-pin or hover), dark ledger-green, light content area, rounded-2xl cards, pill status badges.

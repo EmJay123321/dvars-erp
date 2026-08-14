@@ -42,7 +42,7 @@ export default function ReportsPage() {
     return { income, expense, net: income - expense };
   }, []);
 
-  const maxCategory = Math.max(...expenseCategories.map((c) => c.value));
+  const maxCategory = Math.max(...expenseCategories.map((c) => c.value), 1);
 
   return (
     <div className="space-y-4">
@@ -53,7 +53,7 @@ export default function ReportsPage() {
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors ${
-                tab === t.id ? "bg-accent text-white" : "text-ink-muted hover:text-ink"
+                tab === t.id ? "bg-accent text-ink" : "text-ink-muted hover:text-ink"
               }`}
             >
               {t.label}
@@ -68,7 +68,7 @@ export default function ReportsPage() {
           <div className="p-5">
             <LineChart
               labels={revenueByMonth.map((r) => r.month.split(" ")[0])}
-              series={[{ name: "Income", color: "#1B6E5B", values: revenueByMonth.map((r) => r.value) }]}
+              series={[{ name: "Income", color: "#1DC8CD", values: revenueByMonth.map((r) => r.value) }]}
             />
           </div>
           <div className="grid gap-4 border-t border-border px-5 py-4 sm:grid-cols-2">
@@ -81,7 +81,9 @@ export default function ReportsPage() {
             <div>
               <p className="text-sm text-ink-muted">Average per month</p>
               <p className="mt-1 font-mono text-2xl font-semibold tabular-nums text-ink">
-                {formatCurrency(Math.round(totals.income / revenueByMonth.length))}
+                {formatCurrency(
+                  Math.round(revenueByMonth.length > 0 ? totals.income / revenueByMonth.length : 0)
+                )}
               </p>
             </div>
           </div>
@@ -133,7 +135,7 @@ export default function ReportsPage() {
               <LineChart
                 labels={revenueByMonth.map((r) => r.month.split(" ")[0])}
                 series={[
-                  { name: "Income", color: "#1B6E5B", values: revenueByMonth.map((r) => r.value) },
+                  { name: "Income", color: "#1DC8CD", values: revenueByMonth.map((r) => r.value) },
                   { name: "Expenses", color: "#9CA3AF", values: expensesByMonth.map((r) => r.value) },
                   {
                     name: "Net",
@@ -165,7 +167,9 @@ export default function ReportsPage() {
                   {formatCurrency(totals.net)}
                 </p>
                 <p className="text-xs text-ink-faint">
-                  {((totals.net / totals.income) * 100).toFixed(1)}% margin
+                  {totals.income > 0
+                    ? `${((totals.net / totals.income) * 100).toFixed(1)}% margin`
+                    : "0.0% margin"}
                 </p>
               </div>
             </div>

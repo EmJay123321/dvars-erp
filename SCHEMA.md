@@ -13,7 +13,7 @@ converted to pounds only at the UI boundary via a `lib/money.ts` helper.
 
 - `8400.00` → stored as `840000`
 - Every monetary field name is suffixed with nothing (documented below as pence)
-- `currency` is stored per-invoice (default `GBP`)
+- `currency` is stored per-invoice (default `USD` — all invoices are billed in USD)
 
 ## Conventions
 
@@ -61,9 +61,17 @@ School clients that invoices are raised against.
 | `name` | String | `@unique` |
 | `contactEmail` | String? | |
 | `notes` | String? | |
+| `invoiceNumbering` | Json? | Per-client numbering: `{ prefix, separator, yearIncluded, yearMode, fixedYear, padding, lastNumberUsed, resetEachYear }`. Null/absent = numbering not set up yet. Inherits `settings.invoiceNumberingDefaults` on creation. |
 | `createdAt` / `updatedAt` | DateTime | |
 
 Indexes: `name` (unique).
+
+> **Sequence counters.** `invoiceNumbering.lastNumberUsed` is the per-client
+> running counter. It currently lives on the client document in the browser
+> (single user). TODO(backend): a shared counter must be server side once more
+> than one person can create invoices — otherwise two browsers could hand out
+> the same number. Keep the counter on the client document and increment it
+> atomically (`findOneAndUpdate` / transaction) when that lands.
 
 ### `users`
 
@@ -130,11 +138,11 @@ dashboard KPIs aggregate without unwinding.
 | Field | Type | Notes |
 |---|---|---|
 | `id` | ObjectId | PK |
-| `invoiceNumber` | String | `@unique`, e.g. `INV-1024` |
+| `invoiceNumber` | String | `@unique`, e.g. `MS - 20260065`. Uniqueness enforced per client (two clients may share a prefix) |
 | `clientId` | ObjectId | FK → `clients.id` |
 | `lineItems` | Json | `[{ label, qty, rate, amount }]` — matches `InvoiceLineItem` |
 | `totalAmount` | Int | pence, sum of line items |
-| `currency` | String | default `GBP` |
+| `currency` | String | default `USD` |
 | `status` | `InvoiceStatus` | `Pending` / `Paid` / `Overdue` |
 | `issuedAt` | DateTime | |
 | `dueAt` | DateTime | |

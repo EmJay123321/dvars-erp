@@ -3,7 +3,7 @@
 import { initials } from "@/lib/format";
 
 const avatarColors = [
-  "bg-accent text-white",
+  "bg-accent text-ink",
   "bg-accent-dark text-white",
   "bg-warn text-white",
   "bg-danger text-white",

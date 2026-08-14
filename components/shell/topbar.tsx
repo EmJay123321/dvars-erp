@@ -9,10 +9,12 @@ const titles: Record<string, string> = {
   "/dashboard": "Dashboard",
   "/payroll": "Payroll & Payslips",
   "/invoices": "Invoices",
+  "/directory": "Directory",
   "/reports": "Financial Reports",
   "/system-report": "System Report",
   "/settings/team": "Team & Permissions",
   "/settings/activity": "Activity Log",
+  "/settings/invoice-numbering": "Invoice Numbering",
 };
 
 export default function Topbar() {

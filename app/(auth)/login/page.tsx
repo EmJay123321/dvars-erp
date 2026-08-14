@@ -64,7 +64,7 @@ export default function LoginPage() {
       <div className="flex items-center justify-center bg-bg px-6 py-12">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft font-display text-base font-bold text-accent">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft font-display text-base font-bold text-accent-dark">
               D
             </span>
             <div>
@@ -119,7 +119,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((s) => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-accent hover:text-accent-dark"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-accent-dark hover:text-ink"
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
@@ -134,7 +134,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="h-11 w-full rounded-full bg-accent text-sm font-semibold text-white transition-colors hover:bg-accent-dark focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="h-11 w-full rounded-full bg-accent text-sm font-semibold text-ink transition-colors hover:bg-accent-dark hover:text-white focus:outline-none focus:ring-2 focus:ring-accent/40"
             >
               Sign in
             </button>

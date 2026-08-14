@@ -124,7 +124,7 @@ export default function TeamPage() {
               onClick={() => setStatusFilter(s)}
               title={s === "All" ? "All statuses" : s}
               className={`flex h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-medium transition-colors ${
-                statusFilter === s ? "bg-accent text-white" : "border border-border bg-surface text-ink-muted hover:text-ink"
+                statusFilter === s ? "bg-accent text-ink" : "border border-border bg-surface text-ink-muted hover:text-ink"
               }`}
             >
               {s === "All" ? (

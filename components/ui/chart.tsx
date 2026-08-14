@@ -47,8 +47,8 @@ export default function LineChart({
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1B6E5B" stopOpacity="0.22" />
-            <stop offset="100%" stopColor="#1B6E5B" stopOpacity="0" />
+            <stop offset="0%" stopColor="#1DC8CD" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#1DC8CD" stopOpacity="0" />
           </linearGradient>
         </defs>
 

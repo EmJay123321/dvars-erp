@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useData } from "@/lib/store";
 import type { Role } from "@/lib/types";
-import { IconPin, IconGrid, IconFileText, IconReceipt, IconChart, IconMessage, IconUsers, IconClock } from "@/components/ui/icons";
+import { IconPin, IconGrid, IconFileText, IconReceipt, IconContact, IconChart, IconMessage, IconUsers, IconClock } from "@/components/ui/icons";
 import Avatar from "@/components/ui/avatar";
 
 interface NavItem {
@@ -18,6 +18,7 @@ const adminNav: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: IconGrid },
   { href: "/payroll", label: "Payroll & Payslips", icon: IconFileText },
   { href: "/invoices", label: "Invoices", icon: IconReceipt },
+  { href: "/directory", label: "Directory", icon: IconContact },
   { href: "/reports", label: "Financial Reports", icon: IconChart },
   { href: "/system-report", label: "System Report", icon: IconMessage },
 ];
@@ -25,6 +26,7 @@ const adminNav: NavItem[] = [
 const adminSettingsNav: NavItem[] = [
   { href: "/settings/team", label: "Team & Permissions", icon: IconUsers },
   { href: "/settings/activity", label: "Activity Log", icon: IconClock },
+  { href: "/settings/invoice-numbering", label: "Invoice Numbering", icon: IconReceipt },
 ];
 
 const employeeNav: NavItem[] = [

@@ -29,7 +29,7 @@ export default function RoleGate({
           </p>
           <Link
             href="/dashboard"
-            className="mt-4 text-sm font-medium text-accent hover:text-accent-dark"
+            className="mt-4 text-sm font-medium text-accent-dark hover:text-ink"
           >
             Back to dashboard
           </Link>

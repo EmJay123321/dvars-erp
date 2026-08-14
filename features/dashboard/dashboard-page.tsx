@@ -95,7 +95,7 @@ function AdminDashboard() {
           action={
             <Link
               href="/reports"
-              className="text-sm font-medium text-accent hover:text-accent-dark"
+              className="text-sm font-medium text-accent-dark hover:text-ink"
             >
               Full reports →
             </Link>
@@ -105,7 +105,7 @@ function AdminDashboard() {
             <LineChart
               labels={revenueByMonth.map((r) => r.month.split(" ")[0])}
               series={[
-                { name: "Revenue", color: "#1B6E5B", values: revenueByMonth.map((r) => r.value) },
+                { name: "Revenue", color: "#1DC8CD", values: revenueByMonth.map((r) => r.value) },
                 { name: "Expenses", color: "#9CA3AF", values: expensesByMonth.map((r) => r.value) },
               ]}
             />
@@ -116,7 +116,7 @@ function AdminDashboard() {
           <ul className="divide-y divide-border">
             {activity.slice(0, 6).map((entry) => (
               <li key={entry.id} className="flex gap-3 px-5 py-3">
-                <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                <span className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent-dark">
                   <IconClock size={14} />
                 </span>
                 <div className="min-w-0">
@@ -170,7 +170,7 @@ function EmployeeDashboard() {
         />
       </div>
 
-      <Card title="Your payslips" action={<Link href="/payroll" className="text-sm font-medium text-accent hover:text-accent-dark">View all →</Link>}>
+      <Card title="Your payslips" action={<Link href="/payroll" className="text-sm font-medium text-accent-dark hover:text-ink">View all →</Link>}>
         {myRecords.length === 0 ? (
           <EmptyState title="No payslips yet" description="Payslips will appear here once payroll has been run." />
         ) : (

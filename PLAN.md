@@ -37,17 +37,17 @@ Light content area + dark "ledger" sidebar. Never merge with `DESIGN.md`.
 --bg:            #F5F6F8   /* page background */
 --surface:       #FFFFFF   /* cards, panels */
 --border:        #E3E6EC   /* hairlines */
---ink:           #14181F
+--ink:           #2B3139
 --ink-muted:     #6B7280
 --ink-faint:     #9CA3AF
---accent:        #1B6E5B   /* primary actions, links, active states */
---accent-dark:   #14584A
---accent-soft:   #E4F2EE
+--accent:        #1DC8CD   /* primary actions, links, active states */
+--accent-dark:   #0B7E85
+--accent-soft:   #E0F6F7
 --ok:      #16A34A  (soft: #DCFCE7)   /* Paid / Active */
 --warn:    #D97706  (soft: #FEF3C7)   /* Pending / Resigned */
 --danger:  #DC2626  (soft: #FEE2E2)   /* Overdue / Terminated */
---rail-bg:       #0F1F1B   /* sidebar + login brand panel */
---rail-accent:   #34B294   /* active nav indicator */
+--rail-bg:       #2B3139   /* sidebar + login brand panel */
+--rail-accent:   #1DC8CD   /* active nav indicator */
 ```
 
 Type roles: Space Grotesk 500–700 (headings, wordmark, italic 600 for

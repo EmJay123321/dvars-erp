@@ -1,38 +1,128 @@
 @import "tailwindcss";
+@import "../components/invoice/invoice-sheet.css";
 
 @theme {
   --color-bg: #f5f6f8;
   --color-surface: #ffffff;
   --color-border: #e3e6ec;
-  --color-ink: #14181f;
+  --color-ink: #2b3139;
   --color-ink-muted: #6b7280;
   --color-ink-faint: #9ca3af;
-  --color-accent: #1b6e5b;
-  --color-accent-dark: #14584a;
-  --color-accent-soft: #e4f2ee;
+  --color-accent: #1dc8cd;
+  --color-accent-dark: #0b7e85;
+  --color-accent-soft: #e0f6f7;
   --color-ok: #16a34a;
   --color-ok-soft: #dcfce7;
   --color-warn: #d97706;
   --color-warn-soft: #fef3c7;
   --color-danger: #dc2626;
   --color-danger-soft: #fee2e2;
-  --color-rail-bg: #0f1f1b;
-  --color-rail-accent: #34b294;
+  --color-rail-bg: #2b3139;
+  --color-rail-accent: #1dc8cd;
 }
 
 @theme inline {
-  --font-display: var(--font-space-grotesk);
-  --font-sans: var(--font-inter);
+  --font-display: var(--font-montserrat);
+  --font-sans: var(--font-lato);
   --font-mono: var(--font-plex-mono);
 }
 
 body {
   background: var(--color-bg);
   color: var(--color-ink);
-  font-family: var(--font-inter);
+  font-family: var(--font-lato);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-montserrat);
 }
 
 ::selection {
   background: var(--color-accent);
   color: #ffffff;
+}
+
+@keyframes backdrop-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@page {
+  size: A4;
+  margin: 16mm 14mm;
+}
+
+@media print {
+  body {
+    background: #ffffff;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .print-sheet,
+  .print-sheet * {
+    visibility: visible;
+  }
+
+  .print-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .print-modal {
+    position: static !important;
+    overflow: visible !important;
+    max-height: none !important;
+    background: none !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  input,
+  select {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
 }

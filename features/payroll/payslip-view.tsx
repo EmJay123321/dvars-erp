@@ -14,7 +14,7 @@ export default function PayslipView({ id }: { id: string }) {
   if (!record) {
     return (
       <div className="space-y-4">
-        <Link href="/payroll" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-dark">
+        <Link href="/payroll" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-dark hover:text-ink">
           <IconArrowLeft size={15} /> Back to payroll
         </Link>
         <EmptyState icon={<IconFileText size={22} />} title="Payslip not found" />
@@ -25,7 +25,7 @@ export default function PayslipView({ id }: { id: string }) {
   if (currentUser?.role !== "Admin" && record.employeeId !== currentUser?.id) {
     return (
       <div className="space-y-4">
-        <Link href="/payroll" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-dark">
+        <Link href="/payroll" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-dark hover:text-ink">
           <IconArrowLeft size={15} /> Back to payroll
         </Link>
         <EmptyState
@@ -41,7 +41,7 @@ export default function PayslipView({ id }: { id: string }) {
 
   return (
     <div className="space-y-4">
-      <Link href="/payroll" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-dark">
+      <Link href="/payroll" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-dark hover:text-ink">
         <IconArrowLeft size={15} /> Back to payroll
       </Link>
       <PayslipDocument record={record} employeeName={employee?.name ?? "Unknown"} />

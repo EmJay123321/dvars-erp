@@ -8,6 +8,17 @@ export function formatCurrency(value: number): string {
   );
 }
 
+/** Invoices are billed in USD; amounts render with a $ symbol. */
+export function formatUSD(value: number): string {
+  return (
+    "$" +
+    value.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
+}
+
 export function formatWhole(value: number): string {
   return "£" + value.toLocaleString("en-GB");
 }
