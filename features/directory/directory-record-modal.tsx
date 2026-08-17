@@ -206,11 +206,13 @@ export default function DirectoryRecordModal({
 
   const clientOptions = useMemo(
     () =>
-      clients.map((c) => ({
-        id: c.id,
-        label: c.clientName,
-        secondary: c.status === "Inactive" ? `${c.companyName || "Client"} · Inactive` : c.companyName,
-      })),
+      clients
+        .filter((c) => !c.deletedAt)
+        .map((c) => ({
+          id: c.id,
+          label: c.clientName,
+          secondary: c.status === "Inactive" ? `${c.companyName || "Client"} · Inactive` : c.companyName,
+        })),
     [clients]
   );
 

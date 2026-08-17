@@ -48,6 +48,9 @@ export function linkedRecordDescription(
 /**
  * Removes a directory record permanently. Kept separate from the UI so the
  * backend call can be dropped in later without touching components.
+ *
+ * The UI currently soft-deletes records (sets `deletedAt`) before this runs;
+ * this stub is where a real hard-delete endpoint would be wired up.
  */
 export async function deleteDirectoryRecord(
   record: Client | VA
@@ -56,7 +59,7 @@ export async function deleteDirectoryRecord(
   // Expected contract:
   //   DELETE /directory/delete.php?type=<client|va>&id=<id>
   //   -> 200 on success
-  //   -> 409 { error: "..." } when linked records exist (block on the client first)
+  //   -> 409 { error: "..." } when linked records exist (informational only)
   // await fetch(
   //   `/directory/delete.php?type=${"clientName" in record ? "client" : "va"}&id=${record.id}`,
   //   { method: "DELETE" }

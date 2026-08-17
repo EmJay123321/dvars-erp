@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useData } from "@/lib/store";
 import Modal from "@/components/ui/modal";
 import Button from "@/components/ui/button";
@@ -233,7 +234,11 @@ export default function InvoiceTemplateModal({ onClose }: { onClose: () => void 
   const clientOptions = useMemo(
     () =>
       clients
-        .filter((c) => c.status === "Active" || c.id === clientId)
+        .filter(
+          (c) =>
+            (c.status === "Active" || c.id === clientId) &&
+            (!c.deletedAt || c.id === clientId)
+        )
         .map((c) => ({
           id: c.id,
           label: c.clientName,
@@ -247,6 +252,7 @@ export default function InvoiceTemplateModal({ onClose }: { onClose: () => void 
       vas.filter(
         (v) =>
           (v.status === "Active" || v.id === vaId) &&
+          (!v.deletedAt || v.id === vaId) &&
           (!clientId || (v.assignedClientIds ?? []).includes(clientId) || v.id === vaId)
       ),
     [vas, clientId, vaId]
@@ -414,8 +420,12 @@ export default function InvoiceTemplateModal({ onClose }: { onClose: () => void 
               <p className="invoice-sheet__company-line">{INVOICE_CONFIG.phone}</p>
             </div>
             <div className="invoice-sheet__logo-box">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={INVOICE_CONFIG.logoPath} alt="Company logo" />
+              <Image
+                src={INVOICE_CONFIG.logoPath}
+                alt="Company logo"
+                width={500}
+                height={500}
+              />
             </div>
           </div>
           <div className="invoice-sheet__band-bottom">
@@ -609,11 +619,12 @@ export default function InvoiceTemplateModal({ onClose }: { onClose: () => void 
 
         <div className="invoice-sheet__footer">
           <div className="invoice-sheet__prepared-by">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               className="invoice-sheet__signature"
               src={INVOICE_CONFIG.preparedBy.signaturePath}
               alt="Signature"
+              width={178}
+              height={100}
             />
           </div>
 

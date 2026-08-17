@@ -18,8 +18,8 @@ const FOCUSABLE =
 
 /**
  * Reusable delete-confirmation dialog. Cancel is focused on open so a stray
- * Enter never deletes. When `warning` is provided the delete is blocked and an
- * "Archive instead" action is offered as the safe alternative.
+ * Enter never deletes. `warning` is informational only — it never blocks
+ * deletion. `onArchive` (when provided) is offered as an alternative.
  */
 export default function ConfirmDeleteModal({
   open,
@@ -31,7 +31,6 @@ export default function ConfirmDeleteModal({
   onConfirm,
 }: ConfirmDeleteModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const blocked = Boolean(warning);
 
   useEffect(() => {
     if (!open) return;
@@ -92,8 +91,7 @@ export default function ConfirmDeleteModal({
             {title}
           </h2>
           <p id="confirm-delete-body" className="mt-1 text-sm text-ink-muted">
-            {body ??
-              "Are you sure you want to permanently delete this record? This cannot be undone."}
+            {body ?? "Are you sure you want to delete this record?"}
           </p>
           {warning && (
             <div className="mt-3 rounded-xl bg-danger-soft px-3 py-2.5 text-sm text-danger">
@@ -105,17 +103,12 @@ export default function ConfirmDeleteModal({
           <Button variant="secondary" autoFocus onClick={onCancel}>
             Cancel
           </Button>
-          {blocked && onArchive && (
+          {onArchive && (
             <Button variant="primary" onClick={onArchive}>
               Archive instead
             </Button>
           )}
-          <Button
-            variant="danger"
-            onClick={onConfirm}
-            disabled={blocked}
-            title={blocked ? "Blocked — linked records exist" : undefined}
-          >
+          <Button variant="danger" onClick={onConfirm}>
             Delete
           </Button>
         </div>

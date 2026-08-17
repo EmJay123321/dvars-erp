@@ -44,7 +44,11 @@ export default function PayslipView({ id }: { id: string }) {
       <Link href="/payroll" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-dark hover:text-ink">
         <IconArrowLeft size={15} /> Back to payroll
       </Link>
-      <PayslipDocument record={record} employeeName={employee?.name ?? "Unknown"} />
+      <PayslipDocument
+        record={record}
+        employeeName={employee?.name ?? "Unknown"}
+        jobPosition={employee?.department}
+      />
     </div>
   );
 }

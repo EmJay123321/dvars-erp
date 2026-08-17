@@ -25,6 +25,7 @@ import type {
   PayrollStatus,
   Report,
   Role,
+  Signer,
   VA,
 } from "./types";
 import {
@@ -49,6 +50,7 @@ const SESSION_KEY = "pathways-erp-session";
 const DIRECTORY_KEY = "pathways-erp-directory";
 const DIRECTORY_DATA_VERSION = "pathways-erp-directory-data-v2";
 const INVOICES_KEY = "pathways-erp-invoices";
+const PAYROLL_KEY = "pathways-erp-payroll";
 // TODO(backend): the per-client numbering counters must move to the
 // PHP/MongoDB backend. They live on each client record in localStorage now
 // (single browser), but a shared counter has to be server side once more than
@@ -79,6 +81,20 @@ function readInvoices(): Invoice[] | null {
     const raw = window.localStorage.getItem(INVOICES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Invoice[];
+      return Array.isArray(parsed) ? parsed : null;
+    }
+  } catch {
+    // ignore corrupted storage
+  }
+  return null;
+}
+
+function readPayroll(): PayrollRecord[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(PAYROLL_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as PayrollRecord[];
       return Array.isArray(parsed) ? parsed : null;
     }
   } catch {
@@ -147,8 +163,12 @@ function subscribeSession(listener: () => void) {
 export interface NewPayrollInput {
   employeeId: string;
   monthValue: string; // "YYYY-MM"
-  gross: number;
+  weeks: { start: string; end: string; hours: number; earnings: number }[];
   status: PayrollStatus;
+  clientName?: string;
+  companyName?: string;
+  preparedBy: Signer;
+  signedBy?: Signer | null;
 }
 
 export interface NewInvoiceInput {
@@ -256,7 +276,7 @@ function tempPassword(): string {
 
 export function DataProvider({ children }: { children: ReactNode }) {
   const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
-  const [payroll, setPayroll] = useState<PayrollRecord[]>(initialPayroll);
+  const [payroll, setPayroll] = useState<PayrollRecord[]>(() => readPayroll() ?? initialPayroll);
   const [invoices, setInvoices] = useState<Invoice[]>(() => readInvoices() ?? initialInvoices);
   const [activity, setActivity] = useState<ActivityLogEntry[]>(initialActivity);
   const [reports, setReports] = useState<Report[]>(initialReports);
@@ -293,6 +313,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // storage unavailable — keep in-memory
     }
   }, [invoices]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(PAYROLL_KEY, JSON.stringify(payroll));
+    } catch {
+      // storage unavailable — keep in-memory
+    }
+  }, [payroll]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -355,17 +384,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const [year, month] = input.monthValue.split("-").map(Number);
       const start = new Date(Date.UTC(year, month - 1, 1));
       const end = new Date(Date.UTC(year, month - 1, lastDayOfMonth(year, month - 1)));
-      const tax = Math.round(input.gross * 0.2);
-      const ni = Math.round(input.gross * 0.12);
-      const pension = Math.round(input.gross * 0.05);
-      const net = input.gross - tax - ni - pension;
+      const gross = input.weeks.reduce((sum, week) => sum + week.earnings, 0);
+      const totalHours = input.weeks.reduce((sum, week) => sum + week.hours, 0);
+      const tax = Math.round(gross * 0.2);
+      const ni = Math.round(gross * 0.12);
+      const pension = Math.round(gross * 0.05);
+      const net = gross - tax - ni - pension;
       const record: PayrollRecord = {
         id: uid(),
         employeeId: input.employeeId,
         periodStart: start.toISOString().slice(0, 10),
         periodEnd: end.toISOString().slice(0, 10),
-        gross: input.gross,
-        earnings: [{ label: "Base salary", amount: input.gross }],
+        gross,
+        totalHours,
+        weeks: input.weeks,
+        earnings: [{ label: "Base salary", amount: gross }],
         deductions: [
           { label: "Income tax", amount: tax },
           { label: "National Insurance", amount: ni },
@@ -375,6 +408,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         status: input.status,
         paidAt: input.status === "Paid" ? new Date().toISOString() : null,
         createdAt: new Date().toISOString(),
+        clientName: input.clientName,
+        companyName: input.companyName,
+        preparedBy: input.preparedBy,
+        signedBy: input.signedBy,
       };
       setPayroll((prev) => [record, ...prev]);
       const employee = employees.find((emp) => emp.id === input.employeeId);
@@ -573,7 +610,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     (id: string): Client | null => {
       const removed = clients.find((c) => c.id === id) ?? null;
       if (removed) {
-        setClients((prev) => prev.filter((c) => c.id !== id));
+        setClients((prev) =>
+          prev.map((c) =>
+            c.id === id ? { ...c, deletedAt: new Date().toISOString() } : c
+          )
+        );
         logActivity(`Deleted client ${removed.clientName}`);
       }
       return removed;
@@ -584,7 +625,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const restoreClient = useCallback(
     (record: Client) => {
       setClients((prev) =>
-        prev.some((c) => c.id === record.id) ? prev : [record, ...prev]
+        prev.some((c) => c.id === record.id)
+          ? prev.map((c) =>
+              c.id === record.id ? { ...c, deletedAt: null } : c
+            )
+          : [{ ...record, deletedAt: null }, ...prev]
       );
       logActivity(`Restored client ${record.clientName}`);
     },
@@ -595,7 +640,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     (id: string): VA | null => {
       const removed = vas.find((v) => v.id === id) ?? null;
       if (removed) {
-        setVas((prev) => prev.filter((v) => v.id !== id));
+        setVas((prev) =>
+          prev.map((v) =>
+            v.id === id ? { ...v, deletedAt: new Date().toISOString() } : v
+          )
+        );
         logActivity(`Deleted VA ${removed.vaName}`);
       }
       return removed;
@@ -606,7 +655,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const restoreVA = useCallback(
     (record: VA) => {
       setVas((prev) =>
-        prev.some((v) => v.id === record.id) ? prev : [record, ...prev]
+        prev.some((v) => v.id === record.id)
+          ? prev.map((v) =>
+              v.id === record.id ? { ...v, deletedAt: null } : v
+            )
+          : [{ ...record, deletedAt: null }, ...prev]
       );
       logActivity(`Restored VA ${record.vaName}`);
     },

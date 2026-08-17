@@ -23,6 +23,10 @@ export function formatWhole(value: number): string {
   return "£" + value.toLocaleString("en-GB");
 }
 
+export function formatHours(value: number): string {
+  return value.toLocaleString("en-GB", { maximumFractionDigits: 2 });
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "2-digit",
@@ -79,6 +83,31 @@ export function uid(): string {
 
 export function lastDayOfMonth(year: number, monthIndex: number): number {
   return new Date(Date.UTC(year, monthIndex + 1, 0)).getUTCDate();
+}
+
+/**
+ * Splits a month (0-based monthIndex) into weekly date ranges, starting at the
+ * 1st and chunking in 7-day blocks, with the final chunk capped at the last
+ * day of the month. Returns ISO date pairs (yyyy-mm-dd).
+ */
+export function weekRangesForMonth(
+  year: number,
+  monthIndex: number
+): { start: string; end: string }[] {
+  const ranges: { start: string; end: string }[] = [];
+  const lastDay = lastDayOfMonth(year, monthIndex);
+  const cursor = new Date(Date.UTC(year, monthIndex, 1));
+  while (cursor.getUTCMonth() === monthIndex) {
+    const start = cursor.toISOString().slice(0, 10);
+    const weekEnd = new Date(cursor);
+    weekEnd.setUTCDate(weekEnd.getUTCDate() + 6);
+    if (weekEnd.getUTCMonth() !== monthIndex) {
+      weekEnd.setUTCFullYear(year, monthIndex, lastDay);
+    }
+    ranges.push({ start, end: weekEnd.toISOString().slice(0, 10) });
+    cursor.setUTCDate(weekEnd.getUTCDate() + 1);
+  }
+  return ranges;
 }
 
 export function monthOptions(count = 12): { label: string; value: string }[] {

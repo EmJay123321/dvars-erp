@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import type { Invoice } from "@/lib/types";
 import { formatUSD, formatDate } from "@/lib/format";
 import { formatWeekRangeLabel } from "@/lib/invoice";
@@ -51,8 +52,12 @@ export default function InvoiceSheet({ invoice }: { invoice: Invoice }) {
             <p className="invoice-sheet__company-line">{INVOICE_CONFIG.phone}</p>
           </div>
           <div className="invoice-sheet__logo-box">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={INVOICE_CONFIG.logoPath} alt="Company logo" />
+            <Image
+              src={INVOICE_CONFIG.logoPath}
+              alt="Company logo"
+              width={500}
+              height={500}
+            />
           </div>
         </div>
         <div className="invoice-sheet__band-bottom">
@@ -127,11 +132,12 @@ export default function InvoiceSheet({ invoice }: { invoice: Invoice }) {
 
       <div className="invoice-sheet__footer">
         <div className="invoice-sheet__prepared-by">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             className="invoice-sheet__signature"
             src={INVOICE_CONFIG.preparedBy.signaturePath}
             alt="Signature"
+            width={178}
+            height={100}
           />
         </div>
 

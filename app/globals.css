@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "../components/invoice/invoice-sheet.css";
+@import "../components/payslip/payslip-sheet.css";
 
 @theme {
   --color-bg: #f5f6f8;

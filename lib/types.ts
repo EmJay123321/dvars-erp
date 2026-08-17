@@ -25,6 +25,20 @@ export interface DeductionLine {
   amount: number;
 }
 
+/** One weekly row of the payslip breakdown (date range + hours + earnings). */
+export interface PayWeekEntry {
+  start: string; // ISO date
+  end: string; // ISO date
+  hours: number;
+  earnings: number;
+}
+
+/** A name + role pair used for the payslip's Prepared by / Signed by blocks. */
+export interface Signer {
+  name: string;
+  role: string;
+}
+
 export interface PayrollRecord {
   id: string;
   employeeId: string;
@@ -37,6 +51,18 @@ export interface PayrollRecord {
   status: PayrollStatus;
   paidAt: string | null;
   createdAt: string;
+  /** Client the employee billed against for the period. */
+  clientName?: string;
+  /** Client's company, when it differs from the employee's own. */
+  companyName?: string;
+  /** Weekly rows captured when payroll was run. Absent on legacy records. */
+  weeks?: PayWeekEntry[];
+  /** Sum of the weekly hours. Absent on legacy records. */
+  totalHours?: number;
+  /** Person who prepared the payslip. Absent on legacy records. */
+  preparedBy?: Signer;
+  /** Approver, blank until someone signs off. Absent on legacy records. */
+  signedBy?: Signer | null;
 }
 
 export type DayPeriod = "AM" | "PM";
@@ -117,6 +143,8 @@ export interface Client {
   /** Per-client invoice numbering. Null/absent = numbering not set up yet. */
   invoiceNumbering?: InvoiceNumberSettings | null;
   createdAt: string;
+  /** ISO timestamp set when the client is soft-deleted. Absent = active record. */
+  deletedAt?: string | null;
 }
 
 export interface VA {
@@ -132,6 +160,8 @@ export interface VA {
   status: DirectoryStatus;
   notes: string;
   createdAt: string;
+  /** ISO timestamp set when the VA is soft-deleted. Absent = active record. */
+  deletedAt?: string | null;
 }
 
 export interface ActivityLogEntry {

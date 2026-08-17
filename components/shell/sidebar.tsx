@@ -26,7 +26,6 @@ const adminNav: NavItem[] = [
 const adminSettingsNav: NavItem[] = [
   { href: "/settings/team", label: "Team & Permissions", icon: IconUsers },
   { href: "/settings/activity", label: "Activity Log", icon: IconClock },
-  { href: "/settings/invoice-numbering", label: "Invoice Numbering", icon: IconReceipt },
 ];
 
 const employeeNav: NavItem[] = [

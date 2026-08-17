@@ -14,7 +14,6 @@ const titles: Record<string, string> = {
   "/system-report": "System Report",
   "/settings/team": "Team & Permissions",
   "/settings/activity": "Activity Log",
-  "/settings/invoice-numbering": "Invoice Numbering",
 };
 
 export default function Topbar() {
