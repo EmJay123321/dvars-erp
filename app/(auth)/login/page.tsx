@@ -21,7 +21,11 @@ export default function LoginPage() {
   const submit = (em: string, pw: string) => {
     const result = signIn(em, pw);
     if (result.ok) {
-      router.push("/dashboard");
+      if (result.mustChangePassword) {
+        router.push("/set-password");
+      } else {
+        router.push("/dashboard");
+      }
     } else {
       setError(result.error ?? "Unable to sign in.");
     }

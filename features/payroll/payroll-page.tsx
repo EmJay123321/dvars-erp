@@ -399,7 +399,7 @@ export default function PayrollPage() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [modalOpen, setModalOpen] = useState(false);
 
-  const isAdmin = currentUser?.role === "Admin";
+  const isAdmin = currentUser?.role === "Admin" || currentUser?.role === "Sub-admin";
 
   const nameById = useMemo(() => {
     const map = new Map<string, string>();

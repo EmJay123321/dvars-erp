@@ -7,7 +7,7 @@ import EmptyState from "@/components/ui/empty-state";
 import { IconArrowLeft, IconFileText } from "@/components/ui/icons";
 
 export default function PayslipView({ id }: { id: string }) {
-  const { payroll, employees, currentUser } = useData();
+  const { payroll, employees, currentUser, markPayrollPaid } = useData();
 
   const record = payroll.find((p) => p.id === id);
 
@@ -22,7 +22,7 @@ export default function PayslipView({ id }: { id: string }) {
     );
   }
 
-  if (currentUser?.role !== "Admin" && record.employeeId !== currentUser?.id) {
+  if (currentUser?.role !== "Admin" && currentUser?.role !== "Sub-admin" && record.employeeId !== currentUser?.id) {
     return (
       <div className="space-y-4">
         <Link href="/payroll" className="inline-flex items-center gap-1.5 text-sm font-medium text-accent-dark hover:text-ink">
@@ -48,6 +48,7 @@ export default function PayslipView({ id }: { id: string }) {
         record={record}
         employeeName={employee?.name ?? "Unknown"}
         jobPosition={employee?.department}
+        onMarkPaid={() => markPayrollPaid(record.id)}
       />
     </div>
   );

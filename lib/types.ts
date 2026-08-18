@@ -1,5 +1,5 @@
-export type Role = "Admin" | "Employee";
-export type EmployeeStatus = "Active" | "Terminated" | "Resigned";
+export type Role = "Admin" | "Sub-admin" | "Employee";
+export type EmployeeStatus = "Active" | "Terminated" | "Resigned" | "Invited" | "Pending";
 export type PayrollStatus = "Pending" | "Paid";
 export type InvoiceStatus = "Pending" | "Paid" | "Overdue";
 export type DirectoryStatus = "Active" | "Inactive";
@@ -13,6 +13,16 @@ export interface Employee {
   status: EmployeeStatus;
   department: string;
   createdAt: string; // ISO date
+  /** Token for the invite link. Present when status is "Invited". */
+  inviteToken?: string;
+  /** Expiry time for the invite link. Present when status is "Invited". */
+  inviteExpiresAt?: string;
+  /** When true, user must set a new password before accessing the dashboard. */
+  mustChangePassword?: boolean;
+  /** Linked VA directory record id. */
+  vaId?: string;
+  /** When true, this employee is always shown in Team & Permissions regardless of role. */
+  pinnedInTeamPermissions?: boolean;
 }
 
 export interface EarningsLine {

@@ -40,6 +40,7 @@ export function statusBadgeTone(status: string): Tone {
       return "ok";
     case "Pending":
     case "Resigned":
+    case "Invited":
       return "warn";
     case "Overdue":
     case "Terminated":

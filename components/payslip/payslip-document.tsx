@@ -1,11 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import type { PayrollRecord, Signer } from "@/lib/types";
 import { formatCurrency, formatHours, formatPeriod } from "@/lib/format";
 import Badge, { statusBadgeTone } from "@/components/ui/badge";
 import Button from "@/components/ui/button";
-import { IconDownload, IconPrinter } from "@/components/ui/icons";
+import { IconCheck, IconDownload, IconPrinter } from "@/components/ui/icons";
 
 /**
  * Static company branding for the payslip.
@@ -101,10 +102,12 @@ export default function PayslipDocument({
   record,
   employeeName,
   jobPosition,
+  onMarkPaid,
 }: {
   record: PayrollRecord;
   employeeName: string;
   jobPosition?: string;
+  onMarkPaid?: () => void;
 }) {
   // Newer records carry the weekly rows entered at run time; older ones fall
   // back to the derived breakdown so they still render.
@@ -125,6 +128,21 @@ export default function PayslipDocument({
     month: "long",
     year: "numeric",
   });
+
+  const canMarkPaid = record.status !== "Paid" && onMarkPaid;
+  const [markingPaid, setMarkingPaid] = useState(false);
+
+  const handleMarkPaid = async () => {
+    if (!onMarkPaid) return;
+    setMarkingPaid(true);
+    try {
+      await onMarkPaid();
+    } catch {
+      // error handled silently — state unchanged
+    } finally {
+      setMarkingPaid(false);
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-[760px] space-y-5">
@@ -289,6 +307,18 @@ export default function PayslipDocument({
           <p>{PAYSLIP_CONFIG.website}</p>
         </footer>
       </div>
+
+      {canMarkPaid && (
+        <div className="print:hidden flex justify-center mt-8">
+          <Button
+            icon={<IconCheck size={16} />}
+            onClick={handleMarkPaid}
+            disabled={markingPaid}
+          >
+            {markingPaid ? "Marking as paid…" : "Mark as paid"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

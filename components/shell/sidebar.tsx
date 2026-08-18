@@ -78,8 +78,8 @@ export default function Sidebar() {
   const { currentUser } = useData();
 
   const role: Role = currentUser?.role ?? "Employee";
-  const nav = role === "Admin" ? adminNav : employeeNav;
-  const showSettings = role === "Admin";
+  const nav = role === "Admin" || role === "Sub-admin" ? adminNav : employeeNav;
+  const showSettings = role === "Admin" || role === "Sub-admin";
 
   return (
     <aside

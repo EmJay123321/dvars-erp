@@ -14,6 +14,7 @@ import {
   parseInvoiceNumber,
   resolveInvoiceYear,
 } from "@/lib/invoice";
+import { generateTempPassword } from "@/lib/auth";
 import type {
   Client,
   DirectoryStatus,
@@ -164,13 +165,14 @@ export default function DirectoryRecordModal({
   onClose: () => void;
   onSaved: (record: Client | VA) => void;
 }) {
-  const { clients, invoices, addClient, updateClient, addVA, updateVA, invoiceNumberingDefaults } =
+  const { clients, invoices, addClient, updateClient, addVA, updateVA, addVAEmployee, invoiceNumberingDefaults } =
     useData();
   const [form, setForm] = useState<FormState>(() =>
     toForm(record, invoiceNumberingDefaults)
   );
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [confirm, setConfirm] = useState<{ highest: number; seq: number } | null>(null);
+  const [savedAccessCode, setSavedAccessCode] = useState<{ name: string; code: string } | null>(null);
 
   const isEdit = Boolean(record);
   const title = isEdit
@@ -303,7 +305,20 @@ export default function DirectoryRecordModal({
         updateVA(record.id, payload);
         onSaved({ ...(record as VA), ...payload });
       } else {
-        onSaved(addVA(payload));
+        const va = addVA(payload);
+        if (form.email.trim()) {
+          const tempPassword = generateTempPassword();
+          addVAEmployee({
+            name: form.vaName.trim(),
+            email: form.email.trim(),
+            department: form.vaRole.trim() || "Employee",
+            vaId: va.id,
+            tempPassword,
+          });
+          setSavedAccessCode({ name: form.vaName.trim(), code: tempPassword });
+        } else {
+          onSaved(va);
+        }
       }
     }
   };
@@ -610,6 +625,49 @@ export default function DirectoryRecordModal({
             Saving this could reuse an existing invoice number. Confirm you want
             to continue.
           </p>
+        </Modal>
+      )}
+
+      {savedAccessCode && (
+        <Modal
+          open
+          onClose={() => {
+            setSavedAccessCode(null);
+            onSaved({} as VA);
+          }}
+          title="VA added"
+          size="md"
+          footer={
+            <Button
+              onClick={() => {
+                setSavedAccessCode(null);
+                onSaved({} as VA);
+              }}
+            >
+              Done
+            </Button>
+          }
+        >
+          <div className="space-y-4">
+            <div className="rounded-xl border border-accent-soft bg-accent-soft/40 px-4 py-3">
+              <p className="text-sm text-ink">
+                <span className="font-semibold">{savedAccessCode.name}</span> has
+                been added to the directory and a team account has been created.
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-bg p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+                Temporary access code
+              </p>
+              <p className="mt-2 font-mono text-lg font-bold tracking-widest text-ink">
+                {savedAccessCode.code}
+              </p>
+              <p className="mt-2 text-xs text-ink-muted">
+                Share this code with {savedAccessCode.name} so they can log in.
+                They will be asked to set their own password on first login.
+              </p>
+            </div>
+          </div>
         </Modal>
       )}
     </Modal>

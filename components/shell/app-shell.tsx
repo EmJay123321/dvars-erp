@@ -13,10 +13,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!currentUser) {
       router.replace("/login");
+    } else if (currentUser.mustChangePassword) {
+      router.replace("/set-password");
     }
   }, [currentUser, router]);
 
-  if (!currentUser) {
+  if (!currentUser || currentUser.mustChangePassword) {
     return null;
   }
 

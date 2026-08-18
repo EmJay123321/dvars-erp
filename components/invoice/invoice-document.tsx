@@ -45,7 +45,7 @@ export default function InvoiceDocument({
       <InvoiceSheet invoice={invoice} />
 
       {canMarkPaid && (
-        <div className="print:hidden flex justify-center">
+        <div className="print:hidden flex justify-center mt-8">
           <Button icon={<IconCheck size={16} />} onClick={onMarkPaid}>
             Mark as paid
           </Button>

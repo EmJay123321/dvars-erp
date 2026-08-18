@@ -39,6 +39,8 @@ import {
   salaryByEmployeeId,
 } from "./mock";
 import { lastDayOfMonth, uid } from "./format";
+import { hashPassword, verifyPassword } from "./auth";
+import { sendInviteEmail } from "./invite-email";
 import {
   DEFAULT_INVOICE_NUMBERING_DEFAULTS,
   invoicesForClient,
@@ -49,6 +51,7 @@ import {
 const SESSION_KEY = "pathways-erp-session";
 const DIRECTORY_KEY = "pathways-erp-directory";
 const DIRECTORY_DATA_VERSION = "pathways-erp-directory-data-v2";
+const EMPLOYEES_KEY = "pathways-erp-employees";
 const INVOICES_KEY = "pathways-erp-invoices";
 const PAYROLL_KEY = "pathways-erp-payroll";
 // TODO(backend): the per-client numbering counters must move to the
@@ -140,6 +143,20 @@ function readDirectory(): { clients: Client[]; vas: VA[] } | null {
   return null;
 }
 
+function readEmployees(): Employee[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(EMPLOYEES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Employee[];
+      return Array.isArray(parsed) ? parsed : null;
+    }
+  } catch {
+    // ignore corrupted storage
+  }
+  return null;
+}
+
 const sessionListeners = new Set<() => void>();
 
 function notifySession() {
@@ -219,6 +236,7 @@ export type VAPatch = Partial<NewVAInput>;
 export interface SignInResult {
   ok: boolean;
   error?: string;
+  mustChangePassword?: boolean;
 }
 
 export interface AddInvoiceResult {
@@ -230,6 +248,8 @@ export interface AddInvoiceResult {
 interface DataContextValue {
   currentUser: Employee | null;
   employees: Employee[];
+  /** Employees visible in Team & Permissions: Admin, Sub-admin, or pinned. */
+  teamPermissionsEmployees: Employee[];
   payroll: PayrollRecord[];
   invoices: Invoice[];
   clients: Client[];
@@ -239,15 +259,25 @@ interface DataContextValue {
   invoiceNumberingDefaults: InvoiceNumberDefaults;
   signIn: (email: string, password: string) => SignInResult;
   signOut: () => void;
+  setNewPassword: (newPassword: string) => { ok: boolean; error?: string };
   addPayroll: (input: NewPayrollInput) => PayrollRecord;
   markInvoicePaid: (id: string) => void;
+  markPayrollPaid: (id: string) => void;
   addInvoice: (input: NewInvoiceInput) => AddInvoiceResult;
   saveInvoiceNumberingDefaults: (defaults: InvoiceNumberDefaults) => void;
   updateEmployeeStatus: (id: string, status: EmployeeStatus) => void;
+  deleteEmployee: (id: string) => void;
   addEmployee: (input: { name: string; email: string; role: Role; department: string }) => {
     employee: Employee;
-    tempPassword: string;
+    inviteLink: string;
   };
+  addVAEmployee: (input: {
+    name: string;
+    email: string;
+    department: string;
+    vaId: string;
+    tempPassword: string;
+  }) => Employee;
   addReport: (text: string) => void;
   addReply: (reportId: string, text: string) => void;
   logActivity: (description: string) => void;
@@ -265,17 +295,8 @@ interface DataContextValue {
 
 const DataContext = createContext<DataContextValue | null>(null);
 
-function tempPassword(): string {
-  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
-  let out = "PP-";
-  for (let i = 0; i < 6; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return out;
-}
-
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
+  const [employees, setEmployees] = useState<Employee[]>(() => readEmployees() ?? initialEmployees);
   const [payroll, setPayroll] = useState<PayrollRecord[]>(() => readPayroll() ?? initialPayroll);
   const [invoices, setInvoices] = useState<Invoice[]>(() => readInvoices() ?? initialInvoices);
   const [activity, setActivity] = useState<ActivityLogEntry[]>(initialActivity);
@@ -317,6 +338,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
+      window.localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(employees));
+    } catch {
+      // storage unavailable — keep in-memory
+    }
+  }, [employees]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
       window.localStorage.setItem(PAYROLL_KEY, JSON.stringify(payroll));
     } catch {
       // storage unavailable — keep in-memory
@@ -338,25 +368,50 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const currentUser = useMemo(() => {
     if (!storedId) return null;
     const found = employees.find((emp) => emp.id === storedId);
-    return found && found.status === "Active" ? found : null;
-  }, [employees, storedId]);
+    // Allow Active and Pending users — Pending users need access to set their password.
+    if (!found || (found.status !== "Active" && found.status !== "Pending")) return null;
+    // If the employee is linked to a VA that was removed from Directory, block access.
+    if (found.vaId && !vas.some((v) => v.id === found.vaId && !v.deletedAt)) return null;
+    return found;
+  }, [employees, storedId, vas]);
+
+  const teamPermissionsEmployees = useMemo(
+    () =>
+      employees.filter(
+        (e) =>
+          e.role === "Admin" ||
+          e.role === "Sub-admin" ||
+          e.pinnedInTeamPermissions === true
+      ),
+    [employees]
+  );
 
   const signIn = useCallback(
     (email: string, password: string): SignInResult => {
       const found = employees.find(
         (emp) => emp.email.toLowerCase() === email.trim().toLowerCase()
       );
-      if (!found || found.password !== password) {
+      if (!found || !verifyPassword(password, found.password)) {
         return { ok: false, error: "Invalid email or password." };
       }
-      if (found.status !== "Active") {
+      if (found.status !== "Active" && found.status !== "Pending") {
         return { ok: false, error: "This account is not active. Contact your administrator." };
+      }
+      // If the employee is linked to a VA that was removed from Directory, block login.
+      if (found.vaId && !vas.some((v) => v.id === found.vaId && !v.deletedAt)) {
+        return { ok: false, error: "This account is no longer active. Contact your administrator." };
+      }
+      if (found.mustChangePassword) {
+        // Still log them in so they can set a new password, but flag it.
+        window.localStorage.setItem(SESSION_KEY, found.id);
+        notifySession();
+        return { ok: true, mustChangePassword: true };
       }
       window.localStorage.setItem(SESSION_KEY, found.id);
       notifySession();
       return { ok: true };
     },
-    [employees]
+    [employees, vas]
   );
 
   const signOut = useCallback(() => {
@@ -377,6 +432,36 @@ export function DataProvider({ children }: { children: ReactNode }) {
       ]);
     },
     [currentUser]
+  );
+
+  const setNewPassword = useCallback(
+    (newPassword: string): { ok: boolean; error?: string } => {
+      const storedId = readSession();
+      if (!storedId) {
+        return { ok: false, error: "No active session." };
+      }
+      if (newPassword.length < 6) {
+        return { ok: false, error: "Password must be at least 6 characters." };
+      }
+      let foundEmployee: Employee | undefined;
+      setEmployees((prev) =>
+        prev.map((emp) => {
+          if (emp.id !== storedId) return emp;
+          foundEmployee = emp;
+          return {
+            ...emp,
+            password: hashPassword(newPassword),
+            mustChangePassword: false,
+            status: "Active" as EmployeeStatus,
+          };
+        })
+      );
+      if (foundEmployee) {
+        logActivity(`${foundEmployee.name} set their password and activated their account`);
+      }
+      return { ok: true };
+    },
+    [logActivity]
   );
 
   const addPayroll = useCallback(
@@ -432,6 +517,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       );
     },
     [invoices, logActivity]
+  );
+
+  const markPayrollPaid = useCallback(
+    (id: string) => {
+      setPayroll((prev) =>
+        prev.map((p) =>
+          p.id === id
+            ? { ...p, status: "Paid" as PayrollStatus, paidAt: new Date().toISOString() }
+            : p
+        )
+      );
+      const record = payroll.find((p) => p.id === id);
+      const employee = employees.find((e) => e.id === record?.employeeId);
+      logActivity(
+        `Marked payslip for ${employee?.name ?? "employee"} (${record?.periodStart ?? id}) as paid`
+      );
+    },
+    [payroll, employees, logActivity]
   );
 
   const addInvoice = useCallback(
@@ -683,22 +786,71 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [currentUser, employees, logActivity]
   );
 
+  const deleteEmployee = useCallback(
+    (id: string) => {
+      const employee = employees.find((emp) => emp.id === id);
+      setEmployees((prev) => prev.filter((emp) => emp.id !== id));
+      if (employee) {
+        logActivity(`Removed ${employee.name} from the team`);
+      }
+    },
+    [employees, logActivity]
+  );
+
   const addEmployee = useCallback(
     (input: { name: string; email: string; role: Role; department: string }) => {
-      const password = tempPassword();
+      const inviteToken = uid();
+      const inviteExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
       const employee: Employee = {
         id: uid(),
         name: input.name,
         email: input.email,
-        password,
+        password: "",
         role: input.role,
-        status: "Active",
+        status: "Invited",
         department: input.department,
         createdAt: new Date().toISOString(),
+        inviteToken,
+        inviteExpiresAt,
       };
       setEmployees((prev) => [...prev, employee]);
       logActivity(`Invited ${employee.name} (${employee.department}) as ${employee.role}`);
-      return { employee, tempPassword: password };
+      const inviteLink = `${typeof window !== "undefined" ? window.location.origin : ""}/invite?token=${inviteToken}`;
+      return { employee, inviteLink };
+    },
+    [logActivity]
+  );
+
+  const addVAEmployee = useCallback(
+    (input: {
+      name: string;
+      email: string;
+      department: string;
+      vaId: string;
+      tempPassword: string;
+    }) => {
+      const employee: Employee = {
+        id: uid(),
+        name: input.name,
+        email: input.email,
+        password: hashPassword(input.tempPassword),
+        role: "Employee",
+        status: "Pending",
+        department: input.department,
+        createdAt: new Date().toISOString(),
+        mustChangePassword: true,
+        vaId: input.vaId,
+      };
+      setEmployees((prev) => [...prev, employee]);
+      sendInviteEmail({
+        to: input.email,
+        name: input.name,
+        tempPassword: input.tempPassword,
+      });
+      logActivity(
+        `Created account for VA ${employee.name} (${employee.department}) — pending setup`
+      );
+      return employee;
     },
     [logActivity]
   );
@@ -752,6 +904,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     () => ({
       currentUser,
       employees,
+      teamPermissionsEmployees,
       payroll,
       invoices,
       clients,
@@ -761,12 +914,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       invoiceNumberingDefaults,
       signIn,
       signOut,
+      setNewPassword,
       addPayroll,
       markInvoicePaid,
+      markPayrollPaid,
       addInvoice,
       saveInvoiceNumberingDefaults,
       updateEmployeeStatus,
+      deleteEmployee,
       addEmployee,
+      addVAEmployee,
       addReport,
       addReply,
       logActivity,
@@ -784,6 +941,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [
       currentUser,
       employees,
+      teamPermissionsEmployees,
       payroll,
       invoices,
       clients,
@@ -793,12 +951,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       invoiceNumberingDefaults,
       signIn,
       signOut,
+      setNewPassword,
       addPayroll,
       markInvoicePaid,
+      markPayrollPaid,
       addInvoice,
       saveInvoiceNumberingDefaults,
       updateEmployeeStatus,
+      deleteEmployee,
       addEmployee,
+      addVAEmployee,
       addReport,
       addReply,
       logActivity,

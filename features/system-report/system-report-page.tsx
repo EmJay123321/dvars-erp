@@ -101,7 +101,7 @@ export default function SystemReportPage() {
   const { currentUser, reports, addReport } = useData();
   const [draft, setDraft] = useState("");
 
-  const isAdmin = currentUser?.role === "Admin";
+  const isAdmin = currentUser?.role === "Admin" || currentUser?.role === "Sub-admin";
   const myReports = reports.filter((r) => r.employeeId === currentUser?.id);
   const visibleReports = isAdmin ? reports : myReports;
 

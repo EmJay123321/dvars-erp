@@ -16,7 +16,7 @@ export default function RoleGate({
 }) {
   const { currentUser } = useData();
 
-  if (currentUser?.role !== role) {
+  if (currentUser?.role !== role && !(role === "Admin" && currentUser?.role === "Sub-admin")) {
     return (
       <Card className="max-w-md">
         <div className="flex flex-col items-center px-6 py-12 text-center">

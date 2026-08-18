@@ -209,5 +209,5 @@ function EmployeeDashboard() {
 export default function DashboardPage() {
   const { currentUser } = useData();
   if (!currentUser) return null;
-  return currentUser.role === "Admin" ? <AdminDashboard /> : <EmployeeDashboard />;
+  return currentUser.role === "Admin" || currentUser.role === "Sub-admin" ? <AdminDashboard /> : <EmployeeDashboard />;
 }
