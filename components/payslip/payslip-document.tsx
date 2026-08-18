@@ -266,7 +266,6 @@ export default function PayslipDocument({
 
         <div className="payslip-sheet__signature">
           <div>
-            <p className="payslip-sheet__label">Prepared by</p>
             {preparedBy.name ? (
               <>
                 <Image
@@ -276,8 +275,6 @@ export default function PayslipDocument({
                   width={178}
                   height={100}
                 />
-                <p className="payslip-sheet__signature-name">{preparedBy.name}</p>
-                <p className="payslip-sheet__signature-role">{preparedBy.role}</p>
               </>
             ) : (
               <p className="payslip-sheet__signature-name">—</p>
