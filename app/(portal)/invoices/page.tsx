@@ -1,10 +1,10 @@
-import RoleGate from "@/components/shell/role-gate";
+import PermissionGate from "@/components/shell/permission-gate";
 import InvoicesPage from "@/features/invoices/invoices-page";
 
 export default function Page() {
   return (
-    <RoleGate role="Admin">
+    <PermissionGate module="invoices">
       <InvoicesPage />
-    </RoleGate>
+    </PermissionGate>
   );
 }

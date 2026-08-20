@@ -12,7 +12,7 @@ const demoAccounts = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signIn } = useData();
+  const { signIn, getFirstAccessiblePath } = useData();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +24,7 @@ export default function LoginPage() {
       if (result.mustChangePassword) {
         router.push("/set-password");
       } else {
-        router.push("/dashboard");
+        router.push(getFirstAccessiblePath());
       }
     } else {
       setError(result.error ?? "Unable to sign in.");

@@ -54,18 +54,23 @@ export default function DirectoryPage() {
     [clients]
   );
 
+  const vaById = useMemo(
+    () => new Map(vas.map((v) => [v.id, v])),
+    [vas]
+  );
+
   const filteredClients = useMemo(() => {
     const q = query.trim().toLowerCase();
     return clients.filter((c) => {
       if (c.deletedAt) return false;
       if (status !== "All" && c.status !== status) return false;
       if (!q) return true;
-      return [c.clientName, c.companyName, c.leadManagerName, c.contactPerson, c.email]
+      return [c.clientName, c.companyName, vaById.get(c.leadManagerId)?.vaName ?? "", c.contactPerson, c.email]
         .join(" ")
         .toLowerCase()
         .includes(q);
     });
-  }, [clients, query, status]);
+  }, [clients, query, status, vaById]);
 
   const filteredVAs = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -157,6 +162,7 @@ export default function DirectoryPage() {
           <ClientTable
             clients={filteredClients}
             total={clients.length}
+            vaById={vaById}
             onAdd={() => setModal({ mode: "clients" })}
             onEdit={(c) => setModal({ mode: "clients", record: c })}
             onToggle={toggleStatus}
@@ -220,12 +226,14 @@ function StartEmptyRow({
 function ClientTable({
   clients,
   total,
+  vaById,
   onAdd,
   onEdit,
   onToggle,
 }: {
   clients: Client[];
   total: number;
+  vaById: Map<string, VA>;
   onAdd: () => void;
   onEdit: (client: Client) => void;
   onToggle: (record: Client | VA) => void;
@@ -292,7 +300,7 @@ function ClientTable({
                       )}
                     </p>
                   </td>
-                <td className="px-4 py-3 text-ink-muted">{c.leadManagerName || "—"}</td>
+                <td className="px-4 py-3 text-ink-muted">{vaById.get(c.leadManagerId)?.vaName || "—"}</td>
                 <td className="hidden px-4 py-3 md:table-cell">
                   <p className="text-ink-muted">{c.contactPerson || "—"}</p>
                   <p className="text-xs text-ink-faint">{c.email || "—"}</p>

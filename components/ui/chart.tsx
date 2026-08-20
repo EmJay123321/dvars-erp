@@ -80,7 +80,7 @@ export default function LineChart({
             const area = `${pad.left},${y(0)} ${linePoints} ${x(s.values.length - 1)},${y(0)}`;
             return (
               <g key={s.name}>
-                <polygon points={area} fill={`url(#${gradientId})`} />
+                <polygon points={area} fill={`url(#${gradientId})`} className="chart-area-animate" />
                 <polyline
                   points={linePoints}
                   fill="none"
@@ -88,6 +88,7 @@ export default function LineChart({
                   strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
+                  className="chart-line-animate"
                 />
               </g>
             );
@@ -102,6 +103,7 @@ export default function LineChart({
               strokeDasharray="5 4"
               strokeLinecap="round"
               strokeLinejoin="round"
+              className="chart-line-animate"
             />
           );
         })}

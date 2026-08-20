@@ -1,10 +1,10 @@
-import RoleGate from "@/components/shell/role-gate";
+import PermissionGate from "@/components/shell/permission-gate";
 import ActivityPage from "@/features/settings/activity-page";
 
 export default function Page() {
   return (
-    <RoleGate role="Admin">
+    <PermissionGate module="activityLog">
       <ActivityPage />
-    </RoleGate>
+    </PermissionGate>
   );
 }

@@ -1,10 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo } from "react";
 import { useData } from "@/lib/store";
 import { revenueByMonth, expensesByMonth } from "@/lib/mock";
-import { formatCurrency, formatDateTime, formatPeriod } from "@/lib/format";
+import { DEFAULT_PREFERENCES } from "@/lib/types";
+import {
+  convertCurrency,
+  formatCurrencyPref,
+  formatDateTimePref,
+  formatPeriodPref,
+} from "@/lib/format";
 import KpiCard from "@/components/ui/kpi-card";
+import AnimatedNumber from "@/components/ui/animated-number";
 import Card from "@/components/ui/card";
 import LineChart from "@/components/ui/chart";
 import Badge, { statusBadgeTone } from "@/components/ui/badge";
@@ -20,7 +28,9 @@ import {
 } from "@/components/ui/icons";
 
 function AdminDashboard() {
-  const { employees, payroll, invoices, activity } = useData();
+  const { employees, payroll, invoices, activity, currentUser } = useData();
+  const { displayCurrency: currency, dateFormat } =
+    currentUser?.preferences ?? DEFAULT_PREFERENCES;
 
   const activeEmployees = employees.filter((e) => e.status === "Active").length;
 
@@ -41,42 +51,64 @@ function AdminDashboard() {
   const paidCount = invoices.filter((i) => i.status === "Paid").length;
   const openCount = invoices.length - paidCount;
 
+  const currencyFmt = useMemo(() => {
+    const fmt = (gbp: number) =>
+      formatCurrencyPref(gbp, currency).replace(/^[^\d]*/, "");
+    const sym = formatCurrencyPref(0, currency).replace(/[\d.,\s]/g, "");
+    return (gbp: number) => sym + fmt(gbp);
+  }, [currency]);
+
+  const convertedAugNet = useMemo(() => convertCurrency(augNet, currency), [augNet, currency]);
+  const convertedOpen = useMemo(() => convertCurrency(openInvoices, currency), [openInvoices, currency]);
+  const convertedRevenue = useMemo(() => convertCurrency(revenue, currency), [revenue, currency]);
+  const convertedExpenses = useMemo(() => convertCurrency(totalExpenses, currency), [totalExpenses, currency]);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <KpiCard
           label="Active employees"
-          value={String(activeEmployees)}
+          valueNumber={activeEmployees}
+          valueFormat={(n) => String(Math.round(n))}
           sub={`${employees.length} total on record`}
           tone="accent"
+          category="teal"
           icon={<IconGrid size={18} />}
         />
         <KpiCard
           label="Payroll · August 2026"
-          value={formatCurrency(augNet)}
+          valueNumber={convertedAugNet}
+          valueFormat={currencyFmt}
           sub="Net after tax & deductions"
           tone="neutral"
+          category="blue"
           icon={<IconWallet size={18} />}
         />
         <KpiCard
           label="Outstanding invoices"
-          value={formatCurrency(openInvoices)}
+          valueNumber={convertedOpen}
+          valueFormat={currencyFmt}
           sub={`${openCount} pending / overdue`}
           tone="warn"
+          category="amber"
           icon={<IconReceipt size={18} />}
         />
         <KpiCard
           label="Revenue collected"
-          value={formatCurrency(revenue)}
+          valueNumber={convertedRevenue}
+          valueFormat={currencyFmt}
           sub={`${paidCount} invoices marked paid`}
           tone="ok"
+          category="blue"
           icon={<IconTrendingUp size={18} />}
         />
         <KpiCard
           label="Total expenses (6 mo)"
-          value={formatCurrency(totalExpenses)}
+          valueNumber={convertedExpenses}
+          valueFormat={currencyFmt}
           sub="Salaries, software, marketing, travel"
           tone="neutral"
+          category="blue"
           icon={<IconChart size={18} />}
         />
         <KpiCard
@@ -84,6 +116,7 @@ function AdminDashboard() {
           value={`${paidCount} / ${openCount}`}
           sub="Invoices settled vs outstanding"
           tone="neutral"
+          category="amber"
           icon={<IconFileText size={18} />}
         />
       </div>
@@ -91,7 +124,7 @@ function AdminDashboard() {
       <div className="grid gap-6 xl:grid-cols-3">
         <Card
           title="Revenue vs expenses"
-          className="xl:col-span-2"
+          className="xl:col-span-2 bg-cat-blue-soft"
           action={
             <Link
               href="/reports"
@@ -122,7 +155,7 @@ function AdminDashboard() {
                 <div className="min-w-0">
                   <p className="text-sm leading-snug text-ink">{entry.description}</p>
                   <p className="mt-0.5 text-xs text-ink-faint">
-                    {entry.actor} · {formatDateTime(entry.createdAt)}
+                    {entry.actor} · {formatDateTimePref(entry.createdAt, dateFormat)}
                   </p>
                 </div>
               </li>
@@ -136,6 +169,9 @@ function AdminDashboard() {
 
 function EmployeeDashboard() {
   const { payroll, currentUser } = useData();
+  const { displayCurrency: currency, dateFormat } =
+    currentUser?.preferences ?? DEFAULT_PREFERENCES;
+
   const myRecords = payroll
     .filter((p) => p.employeeId === currentUser?.id)
     .sort((a, b) => b.periodStart.localeCompare(a.periodStart));
@@ -144,26 +180,40 @@ function EmployeeDashboard() {
   const ytdNet = myRecords.reduce((sum, p) => sum + p.net, 0);
   const paidCount = myRecords.filter((p) => p.status === "Paid").length;
 
+  const currencyFmt = useMemo(() => {
+    const fmt = (gbp: number) =>
+      formatCurrencyPref(gbp, currency).replace(/^[^\d]*/, "");
+    const sym = formatCurrencyPref(0, currency).replace(/[\d.,\s]/g, "");
+    return (gbp: number) => sym + fmt(gbp);
+  }, [currency]);
+
+  const convertedLatest = useMemo(() => (latest ? convertCurrency(latest.net, currency) : 0), [latest, currency]);
+  const convertedYtd = useMemo(() => convertCurrency(ytdNet, currency), [ytdNet, currency]);
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
         <KpiCard
           label="Latest net pay"
-          value={latest ? formatCurrency(latest.net) : "—"}
-          sub={latest ? formatPeriod(latest.periodStart, latest.periodEnd) : "No records yet"}
+          valueNumber={latest ? convertedLatest : undefined}
+          valueFormat={latest ? currencyFmt : undefined}
+          value={latest ? undefined : "\u2014"}
+          sub={latest ? formatPeriodPref(latest.periodStart, latest.periodEnd, dateFormat) : "No records yet"}
           tone="accent"
           icon={<IconWallet size={18} />}
         />
         <KpiCard
           label="Total payslips"
-          value={String(myRecords.length)}
+          valueNumber={myRecords.length}
+          valueFormat={(n) => String(Math.round(n))}
           sub={`${paidCount} paid`}
           tone="neutral"
           icon={<IconFileText size={18} />}
         />
         <KpiCard
           label="YTD net income"
-          value={formatCurrency(ytdNet)}
+          valueNumber={convertedYtd}
+          valueFormat={currencyFmt}
           sub="All recorded periods"
           tone="ok"
           icon={<IconTrendingUp size={18} />}
@@ -183,16 +233,26 @@ function EmployeeDashboard() {
                 >
                   <div>
                     <p className="text-sm font-medium text-ink">
-                      {formatPeriod(p.periodStart, p.periodEnd)}
+                      {formatPeriodPref(p.periodStart, p.periodEnd, dateFormat)}
                     </p>
                     <p className="text-xs text-ink-faint">
-                      Gross {formatCurrency(p.gross)} · Paid on{" "}
-                      {p.paidAt ? formatDateTime(p.paidAt) : "—"}
+                      Gross{" "}
+                      <AnimatedNumber
+                        value={convertCurrency(p.gross, currency)}
+                        format={currencyFmt}
+                        duration={750}
+                      />{" "}
+                      · Paid on{" "}
+                      {p.paidAt ? formatDateTimePref(p.paidAt, dateFormat) : "\u2014"}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-mono text-sm font-semibold tabular-nums text-ink">
-                      {formatCurrency(p.net)}
+                      <AnimatedNumber
+                        value={convertCurrency(p.net, currency)}
+                        format={currencyFmt}
+                        duration={750}
+                      />
                     </span>
                     <Badge tone={statusBadgeTone(p.status)}>{p.status}</Badge>
                   </div>

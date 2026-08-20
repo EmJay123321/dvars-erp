@@ -1,8 +1,133 @@
 export type Role = "Admin" | "Sub-admin" | "Employee";
 export type EmployeeStatus = "Active" | "Terminated" | "Resigned" | "Invited" | "Pending";
+
+/* ── Permissions ─────────────────────────────────────────────────── */
+
+export type PermissionAction = "view" | "add" | "edit" | "delete";
+
+export interface ModulePermissions {
+  view: boolean;
+  add: boolean;
+  edit: boolean;
+  delete: boolean;
+}
+
+export const MODULE_KEYS = [
+  "dashboard",
+  "payroll",
+  "invoices",
+  "directory",
+  "reports",
+  "systemReport",
+  "activityLog",
+  "vacationLeaves",
+] as const;
+
+export type ModuleKey = (typeof MODULE_KEYS)[number];
+
+export const MODULE_LABELS: Record<ModuleKey, string> = {
+  dashboard: "Dashboard",
+  payroll: "Payroll & Payslips",
+  invoices: "Invoices",
+  directory: "Directory",
+  reports: "Financial Reports",
+  systemReport: "System Report",
+  activityLog: "Activity Log",
+  vacationLeaves: "Vacation & Leaves",
+};
+
+export type PermissionsMap = Record<ModuleKey, ModulePermissions>;
+
+export const EMPTY_PERMISSIONS: PermissionsMap = {
+  dashboard: { view: false, add: false, edit: false, delete: false },
+  payroll: { view: false, add: false, edit: false, delete: false },
+  invoices: { view: false, add: false, edit: false, delete: false },
+  directory: { view: false, add: false, edit: false, delete: false },
+  reports: { view: false, add: false, edit: false, delete: false },
+  systemReport: { view: false, add: false, edit: false, delete: false },
+  activityLog: { view: false, add: false, edit: false, delete: false },
+  vacationLeaves: { view: false, add: false, edit: false, delete: false },
+};
+/* ── User Preferences ───────────────────────────────────────────── */
+
+export type DisplayCurrency = "GBP" | "USD" | "PHP";
+export type DateFormat = "DD/MM/YYYY" | "MM/DD/YYYY";
+
+export interface UserNotifications {
+  invoiceOverdue: boolean;
+  payrollRunCompleted: boolean;
+  systemReportReply: boolean;
+}
+
+export interface UserPreferences {
+  displayCurrency: DisplayCurrency;
+  dateFormat: DateFormat;
+  notifications: UserNotifications;
+}
+
+export const DEFAULT_PREFERENCES: UserPreferences = {
+  displayCurrency: "GBP",
+  dateFormat: "DD/MM/YYYY",
+  notifications: {
+    invoiceOverdue: true,
+    payrollRunCompleted: true,
+    systemReportReply: true,
+  },
+};
+
 export type PayrollStatus = "Pending" | "Paid";
 export type InvoiceStatus = "Pending" | "Paid" | "Overdue";
 export type DirectoryStatus = "Active" | "Inactive";
+
+/* ── Vacation & Leaves ─────────────────────────────────────────── */
+
+export type LeaveType = "Vacation Leave" | "Sick Leave" | "Emergency Leave" | "Unpaid Leave";
+
+export type LeaveStatus = "Pending" | "Approved" | "Rejected" | "Cancelled";
+
+export interface LeaveRequest {
+  id: string;
+  employeeId: string;
+  leaveType: LeaveType;
+  dateFrom: string;
+  dateTo: string;
+  totalDays: number;
+  reason: string;
+  attachments: string[];
+  notifyUsers: string[];
+  status: LeaveStatus;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  rejectionReason?: string;
+}
+
+export interface LeavePolicy {
+  leaveType: LeaveType;
+  annualCredits: number;
+  carryOver: boolean;
+}
+
+export const DEFAULT_LEAVE_POLICIES: LeavePolicy[] = [
+  { leaveType: "Vacation Leave", annualCredits: 15, carryOver: false },
+  { leaveType: "Sick Leave", annualCredits: 10, carryOver: false },
+  { leaveType: "Emergency Leave", annualCredits: 5, carryOver: false },
+  { leaveType: "Unpaid Leave", annualCredits: 0, carryOver: false },
+];
+
+export function calcBusinessDays(from: string, to: string): number {
+  const start = new Date(from + "T00:00:00Z");
+  const end = new Date(to + "T00:00:00Z");
+  if (end < start) return 0;
+  let count = 0;
+  const cursor = new Date(start);
+  while (cursor <= end) {
+    const day = cursor.getUTCDay();
+    if (day !== 0 && day !== 6) count++;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return count;
+}
 
 export interface Employee {
   id: string;
@@ -23,6 +148,12 @@ export interface Employee {
   vaId?: string;
   /** When true, this employee is always shown in Team & Permissions regardless of role. */
   pinnedInTeamPermissions?: boolean;
+  /** Granular module permissions for Sub-admin users. Absent = no access (Sub-admin) or full access (Admin). */
+  permissions?: PermissionsMap;
+  /** User preferences (currency, date format, notifications). Falls back to defaults when absent. */
+  preferences?: UserPreferences;
+  /** ISO timestamp of the last password change. Absent if never changed via the profile flow. */
+  passwordChangedAt?: string;
 }
 
 export interface EarningsLine {
@@ -141,7 +272,7 @@ export interface Client {
   id: string;
   clientName: string;
   companyName: string;
-  leadManagerName: string;
+  leadManagerId: string;
   contactPerson: string;
   email: string;
   phone: string;

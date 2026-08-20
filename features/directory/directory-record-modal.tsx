@@ -8,6 +8,7 @@ import Input from "@/components/ui/input";
 import Select from "@/components/ui/select";
 import Toggle from "@/components/ui/toggle";
 import MultiSelect from "@/components/ui/multi-select";
+import SearchableSelect from "@/components/ui/searchable-select";
 import {
   highestUsedSequenceForClient,
   nextInvoiceNumber,
@@ -26,7 +27,7 @@ import type {
 interface FormState {
   clientName: string;
   companyName: string;
-  leadManagerName: string;
+  leadManagerId: string;
   contactPerson: string;
   email: string;
   phone: string;
@@ -52,7 +53,7 @@ interface FormState {
 const emptyForm: FormState = {
   clientName: "",
   companyName: "",
-  leadManagerName: "",
+  leadManagerId: "",
   contactPerson: "",
   email: "",
   phone: "",
@@ -104,7 +105,7 @@ function toForm(
       ...emptyForm,
       clientName: record.clientName,
       companyName: record.companyName,
-      leadManagerName: record.leadManagerName,
+      leadManagerId: record.leadManagerId,
       contactPerson: record.contactPerson,
       email: record.email,
       phone: record.phone,
@@ -165,7 +166,7 @@ export default function DirectoryRecordModal({
   onClose: () => void;
   onSaved: (record: Client | VA) => void;
 }) {
-  const { clients, invoices, addClient, updateClient, addVA, updateVA, addVAEmployee, invoiceNumberingDefaults } =
+  const { clients, vas, invoices, addClient, updateClient, addVA, updateVA, addVAEmployee, invoiceNumberingDefaults } =
     useData();
   const [form, setForm] = useState<FormState>(() =>
     toForm(record, invoiceNumberingDefaults)
@@ -218,6 +219,19 @@ export default function DirectoryRecordModal({
     [clients]
   );
 
+  const vaOptions = useMemo(
+    () =>
+      vas
+        .filter((v) => v.status === "Active" && !v.deletedAt)
+        .sort((a, b) => a.vaName.localeCompare(b.vaName))
+        .map((v) => ({
+          id: v.id,
+          label: v.vaName,
+          secondary: v.vaRole || undefined,
+        })),
+    [vas]
+  );
+
   const validate = (): boolean => {
     const next: Partial<Record<keyof FormState, string>> = {};
     if (mode === "client") {
@@ -244,7 +258,7 @@ export default function DirectoryRecordModal({
     const payload = {
       clientName: form.clientName.trim(),
       companyName: form.companyName.trim(),
-      leadManagerName: form.leadManagerName.trim(),
+      leadManagerId: form.leadManagerId,
       contactPerson: form.contactPerson.trim(),
       email: form.email.trim(),
       phone: form.phone.trim(),
@@ -357,12 +371,14 @@ export default function DirectoryRecordModal({
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Input
+              <SearchableSelect
                 label="Assigned VA"
-                value={form.leadManagerName}
-                onChange={(e) => set("leadManagerName", e.target.value)}
-                hint="Auto fills the invoice"
+                value={form.leadManagerId || null}
+                options={vaOptions}
                 placeholder="Who manages this account"
+                onSelect={(id) => set("leadManagerId", id)}
+                hint="Auto fills the invoice"
+                clearable
               />
               <Input
                 label="Contact person"

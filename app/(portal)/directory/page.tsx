@@ -1,10 +1,10 @@
-import RoleGate from "@/components/shell/role-gate";
+import PermissionGate from "@/components/shell/permission-gate";
 import DirectoryPage from "@/features/directory/directory-page";
 
 export default function Page() {
   return (
-    <RoleGate role="Admin">
+    <PermissionGate module="directory">
       <DirectoryPage />
-    </RoleGate>
+    </PermissionGate>
   );
 }

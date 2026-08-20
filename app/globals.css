@@ -18,6 +18,9 @@
   --color-warn-soft: #fef3c7;
   --color-danger: #dc2626;
   --color-danger-soft: #fee2e2;
+  --color-cat-blue: #2563eb;
+  --color-cat-blue-soft: #eff6ff;
+  --color-cat-blue-dark: #1e40af;
   --color-rail-bg: #2b3139;
   --color-rail-accent: #1dc8cd;
 }
@@ -76,6 +79,54 @@ h6 {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes chart-line-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes chart-area-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes chart-bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.chart-line-animate {
+  animation: chart-line-reveal 900ms cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+
+.chart-area-animate {
+  animation: chart-area-reveal 900ms cubic-bezier(0.25, 0.1, 0.25, 1) 200ms both;
+}
+
+.chart-bar-animate {
+  transform-origin: left center;
+  animation: chart-bar-grow 700ms cubic-bezier(0.25, 0.1, 0.25, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-line-animate,
+  .chart-area-animate,
+  .chart-bar-animate {
+    animation: none;
   }
 }
 

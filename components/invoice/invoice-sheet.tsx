@@ -4,6 +4,7 @@ import Image from "next/image";
 import type { Invoice } from "@/lib/types";
 import { formatUSD, formatDate } from "@/lib/format";
 import { formatWeekRangeLabel } from "@/lib/invoice";
+import AnimatedNumber from "@/components/ui/animated-number";
 
 export const INVOICE_CONFIG = {
   companyName: "DYNAMIC VA REFERRAL SERVICES",
@@ -29,11 +30,6 @@ export default function InvoiceSheet({ invoice }: { invoice: Invoice }) {
   const periodLine = hasLineDates
     ? formatWeekRangeLabel(invoice.lineItems.map((li) => li.date!))
     : `Issued ${formatDate(invoice.issuedAt)}`;
-
-  const discountDisplay =
-    invoice.discountType === "percent" && discount > 0 && subtotal > 0
-      ? `${Math.round((discount / subtotal) * 100)}%`
-      : formatUSD(discount);
 
   return (
     <div className="invoice-sheet print-sheet">
@@ -146,14 +142,17 @@ export default function InvoiceSheet({ invoice }: { invoice: Invoice }) {
             <div className="invoice-sheet__total-row">
               <span className="invoice-sheet__total-label">No. of Hours</span>
               <span className="invoice-sheet__total-value">
-                {hours.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                <AnimatedNumber
+                  value={hours}
+                  format={(n) => n.toLocaleString("en-US", { maximumFractionDigits: 2 })}
+                />
               </span>
             </div>
           )}
           <div className="invoice-sheet__total-row">
             <span className="invoice-sheet__total-label">Subtotal (USD)</span>
             <span className="invoice-sheet__total-value">
-              {formatUSD(subtotal)}
+              <AnimatedNumber value={subtotal} format={formatUSD} />
             </span>
           </div>
           <div className="invoice-sheet__total-row">
@@ -161,13 +160,15 @@ export default function InvoiceSheet({ invoice }: { invoice: Invoice }) {
               Discount Percent/Value
             </span>
             <span className="invoice-sheet__total-value">
-              {discountDisplay}
+              {invoice.discountType === "percent" && discount > 0 && subtotal > 0
+                ? `${Math.round((discount / subtotal) * 100)}%`
+                : <AnimatedNumber value={discount} format={formatUSD} />}
             </span>
           </div>
           <div className="invoice-sheet__total-row">
             <span className="invoice-sheet__total-label">Total due (USD)</span>
             <span className="invoice-sheet__total-value invoice-sheet__total-value--grand">
-              {formatUSD(total)}
+              <AnimatedNumber value={total} format={formatUSD} />
             </span>
           </div>
         </div>

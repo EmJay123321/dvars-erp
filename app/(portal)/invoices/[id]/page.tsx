@@ -1,4 +1,4 @@
-import RoleGate from "@/components/shell/role-gate";
+import PermissionGate from "@/components/shell/permission-gate";
 import InvoiceView from "@/features/invoices/invoice-view";
 
 export default async function Page({
@@ -8,8 +8,8 @@ export default async function Page({
 }) {
   const { id } = await params;
   return (
-    <RoleGate role="Admin">
+    <PermissionGate module="invoices">
       <InvoiceView id={id} />
-    </RoleGate>
+    </PermissionGate>
   );
 }

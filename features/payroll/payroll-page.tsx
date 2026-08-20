@@ -508,7 +508,9 @@ export default function PayrollPage() {
               header: "Gross",
               className: "text-right",
               render: (p) => (
-                <span className="font-mono tabular-nums text-ink">{formatCurrency(p.gross)}</span>
+                <span className="font-mono tabular-nums text-ink">
+                  {formatCurrency(p.gross)}
+                </span>
               ),
             },
             {

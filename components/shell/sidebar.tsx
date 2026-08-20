@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useData } from "@/lib/store";
-import type { Role } from "@/lib/types";
+import type { ModuleKey, Role } from "@/lib/types";
 import { IconPin, IconGrid, IconFileText, IconReceipt, IconContact, IconChart, IconMessage, IconUsers, IconClock } from "@/components/ui/icons";
 import Avatar from "@/components/ui/avatar";
 
@@ -12,20 +12,21 @@ interface NavItem {
   href: string;
   label: string;
   icon: (props: { size?: number; className?: string }) => React.ReactNode;
+  module?: ModuleKey;
 }
 
 const adminNav: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: IconGrid },
-  { href: "/payroll", label: "Payroll & Payslips", icon: IconFileText },
-  { href: "/invoices", label: "Invoices", icon: IconReceipt },
-  { href: "/directory", label: "Directory", icon: IconContact },
-  { href: "/reports", label: "Financial Reports", icon: IconChart },
-  { href: "/system-report", label: "System Report", icon: IconMessage },
+  { href: "/dashboard", label: "Dashboard", icon: IconGrid, module: "dashboard" },
+  { href: "/payroll", label: "Payroll & Payslips", icon: IconFileText, module: "payroll" },
+  { href: "/invoices", label: "Invoices", icon: IconReceipt, module: "invoices" },
+  { href: "/directory", label: "Directory", icon: IconContact, module: "directory" },
+  { href: "/reports", label: "Financial Reports", icon: IconChart, module: "reports" },
+  { href: "/system-report", label: "System Report", icon: IconMessage, module: "systemReport" },
 ];
 
 const adminSettingsNav: NavItem[] = [
   { href: "/settings/team", label: "Team & Permissions", icon: IconUsers },
-  { href: "/settings/activity", label: "Activity Log", icon: IconClock },
+  { href: "/settings/activity", label: "Activity Log", icon: IconClock, module: "activityLog" },
 ];
 
 const employeeNav: NavItem[] = [
@@ -78,8 +79,30 @@ export default function Sidebar() {
   const { currentUser } = useData();
 
   const role: Role = currentUser?.role ?? "Employee";
-  const nav = role === "Admin" || role === "Sub-admin" ? adminNav : employeeNav;
-  const showSettings = role === "Admin" || role === "Sub-admin";
+
+  const visibleNav = (() => {
+    if (role === "Admin") return adminNav;
+    if (role === "Sub-admin") {
+      return adminNav.filter((item) => {
+        if (!item.module) return true;
+        return currentUser?.permissions?.[item.module]?.view ?? false;
+      });
+    }
+    return employeeNav;
+  })();
+
+  const visibleSettingsNav = (() => {
+    if (role === "Admin") return adminSettingsNav;
+    if (role === "Sub-admin") {
+      return adminSettingsNav.filter((item) => {
+        if (!item.module) return false;
+        return currentUser?.permissions?.[item.module]?.view ?? false;
+      });
+    }
+    return [];
+  })();
+
+  const showSettings = visibleSettingsNav.length > 0;
 
   return (
     <aside
@@ -101,7 +124,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="mt-2 flex flex-1 flex-col gap-1 px-3">
-        {nav.map((item) => (
+        {visibleNav.map((item) => (
           <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} expanded={expanded} />
         ))}
 
@@ -114,7 +137,7 @@ export default function Sidebar() {
             ) : (
               <div className="mb-1 mt-4 h-px bg-white/10" />
             )}
-            {adminSettingsNav.map((item) => (
+            {visibleSettingsNav.map((item) => (
               <NavLink key={item.href} item={item} active={isActive(pathname, item.href)} expanded={expanded} />
             ))}
           </>

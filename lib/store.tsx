@@ -21,18 +21,27 @@ import type {
   InvoiceNumberDefaults,
   InvoiceNumberSettings,
   InvoiceStatus,
+  LeavePolicy,
+  LeaveRequest,
+  LeaveType,
+  ModuleKey,
+  ModulePermissions,
   PayrollRecord,
   PayrollStatus,
+  PermissionsMap,
   Report,
   Role,
   Signer,
+  UserPreferences,
   VA,
 } from "./types";
+import { MODULE_KEYS, MODULE_LABELS, EMPTY_PERMISSIONS, DEFAULT_LEAVE_POLICIES } from "./types";
 import {
   initialActivity,
   initialClients,
   initialEmployees,
   initialInvoices,
+  initialLeaveRequests,
   initialPayroll,
   initialReports,
   initialVAs,
@@ -54,6 +63,8 @@ const DIRECTORY_DATA_VERSION = "pathways-erp-directory-data-v2";
 const EMPLOYEES_KEY = "pathways-erp-employees";
 const INVOICES_KEY = "pathways-erp-invoices";
 const PAYROLL_KEY = "pathways-erp-payroll";
+const LEAVES_KEY = "pathways-erp-leaves";
+const LEAVE_POLICIES_KEY = "pathways-erp-leave-policies";
 // TODO(backend): the per-client numbering counters must move to the
 // PHP/MongoDB backend. They live on each client record in localStorage now
 // (single browser), but a shared counter has to be server side once more than
@@ -135,7 +146,19 @@ function readDirectory(): { clients: Client[]; vas: VA[] } | null {
                 : [],
             }
       );
-      return { clients: parsed.clients ?? [], vas };
+      // Migrate clients: convert old free-text leadManagerName to leadManagerId
+      const clients = (parsed.clients ?? []).map((c) => {
+        const client = c as Client & { leadManagerName?: string };
+        if (client.leadManagerId !== undefined) return c;
+        const oldName = client.leadManagerName ?? "";
+        if (!oldName) return { ...c, leadManagerId: "" };
+        const matched = vas.find(
+          (v) =>
+            v.vaName.toLowerCase() === oldName.toLowerCase() && !v.deletedAt
+        );
+        return { ...c, leadManagerId: matched?.id ?? "" };
+      });
+      return { clients, vas };
     }
   } catch {
     // ignore corrupted storage
@@ -149,6 +172,34 @@ function readEmployees(): Employee[] | null {
     const raw = window.localStorage.getItem(EMPLOYEES_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Employee[];
+      return Array.isArray(parsed) ? parsed : null;
+    }
+  } catch {
+    // ignore corrupted storage
+  }
+  return null;
+}
+
+function readLeaveRequests(): LeaveRequest[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LEAVES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as LeaveRequest[];
+      return Array.isArray(parsed) ? parsed : null;
+    }
+  } catch {
+    // ignore corrupted storage
+  }
+  return null;
+}
+
+function readLeavePolicies(): LeavePolicy[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LEAVE_POLICIES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as LeavePolicy[];
       return Array.isArray(parsed) ? parsed : null;
     }
   } catch {
@@ -205,7 +256,7 @@ export interface NewInvoiceInput {
 export interface NewClientInput {
   clientName: string;
   companyName?: string;
-  leadManagerName?: string;
+  leadManagerId?: string;
   contactPerson?: string;
   email?: string;
   phone?: string;
@@ -257,6 +308,8 @@ interface DataContextValue {
   activity: ActivityLogEntry[];
   reports: Report[];
   invoiceNumberingDefaults: InvoiceNumberDefaults;
+  leaveRequests: LeaveRequest[];
+  leavePolicies: LeavePolicy[];
   signIn: (email: string, password: string) => SignInResult;
   signOut: () => void;
   setNewPassword: (newPassword: string) => { ok: boolean; error?: string };
@@ -291,6 +344,28 @@ interface DataContextValue {
   setVAStatus: (id: string, status: DirectoryStatus) => void;
   deleteVA: (id: string) => VA | null;
   restoreVA: (record: VA) => void;
+  hasPermission: (module: ModuleKey, action: import("./types").PermissionAction) => boolean;
+  updateSubAdminPermissions: (employeeId: string, permissions: PermissionsMap) => void;
+  createSubAdmin: (input: { name: string; email: string; department: string; password: string }) => Employee;
+  getFirstAccessiblePath: () => string;
+  updateUserPreferences: (prefs: UserPreferences) => void;
+  changePassword: (currentPassword: string, newPassword: string) => { ok: boolean; error?: string };
+  updateCurrentUserProfile: (patch: { name?: string; email?: string }) => { ok: boolean; error?: string };
+  requestLeave: (input: {
+    employeeId: string;
+    leaveType: LeaveType;
+    dateFrom: string;
+    dateTo: string;
+    totalDays: number;
+    reason: string;
+    attachments: string[];
+    notifyUsers: string[];
+  }) => void;
+  cancelLeave: (id: string) => void;
+  approveLeave: (id: string, comment?: string) => void;
+  rejectLeave: (id: string, reason: string) => void;
+  updateLeavePolicies: (policies: LeavePolicy[]) => void;
+  getLeaveBalance: (employeeId: string) => Record<LeaveType, { used: number; remaining: number }>;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -301,6 +376,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [invoices, setInvoices] = useState<Invoice[]>(() => readInvoices() ?? initialInvoices);
   const [activity, setActivity] = useState<ActivityLogEntry[]>(initialActivity);
   const [reports, setReports] = useState<Report[]>(initialReports);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(
+    () => readLeaveRequests() ?? initialLeaveRequests
+  );
+  const [leavePolicies, setLeavePolicies] = useState<LeavePolicy[]>(
+    () => readLeavePolicies() ?? DEFAULT_LEAVE_POLICIES
+  );
   const [invoiceNumberingDefaults, setInvoiceNumberingDefaults] =
     useState<InvoiceNumberDefaults>(
       () => readInvoiceNumbering() ?? DEFAULT_INVOICE_NUMBERING_DEFAULTS
@@ -364,6 +445,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // storage unavailable — keep in-memory
     }
   }, [invoiceNumberingDefaults]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(LEAVES_KEY, JSON.stringify(leaveRequests));
+    } catch {
+      // storage unavailable — keep in-memory
+    }
+  }, [leaveRequests]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(LEAVE_POLICIES_KEY, JSON.stringify(leavePolicies));
+    } catch {
+      // storage unavailable — keep in-memory
+    }
+  }, [leavePolicies]);
 
   const currentUser = useMemo(() => {
     if (!storedId) return null;
@@ -627,7 +726,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         id: uid(),
         clientName: input.clientName,
         companyName: input.companyName ?? "",
-        leadManagerName: input.leadManagerName ?? "",
+        leadManagerId: input.leadManagerId ?? "",
         contactPerson: input.contactPerson ?? "",
         email: input.email ?? "",
         phone: input.phone ?? "",
@@ -769,13 +868,320 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [logActivity]
   );
 
+  /* ── Permission helpers ─────────────────────────────────────────── */
+
+  const hasPermission = useCallback(
+    (module: ModuleKey, action: import("./types").PermissionAction): boolean => {
+      if (!currentUser) return false;
+      if (currentUser.role === "Admin") return true;
+      if (currentUser.role === "Sub-admin") {
+        const perms = currentUser.permissions;
+        if (!perms) return false;
+        return perms[module]?.[action] ?? false;
+      }
+      return false;
+    },
+    [currentUser]
+  );
+
+  const MODULE_ROUTE_ORDER: { module: ModuleKey; path: string }[] = [
+    { module: "dashboard", path: "/dashboard" },
+    { module: "payroll", path: "/payroll" },
+    { module: "invoices", path: "/invoices" },
+    { module: "directory", path: "/directory" },
+    { module: "reports", path: "/reports" },
+    { module: "systemReport", path: "/system-report" },
+    { module: "vacationLeaves", path: "/vacation-leaves" },
+  ];
+
+  const getFirstAccessiblePath = useCallback((): string => {
+    if (!currentUser) return "/login";
+    if (currentUser.role === "Admin" || currentUser.role === "Employee") return "/dashboard";
+    for (const { module, path } of MODULE_ROUTE_ORDER) {
+      if (currentUser.permissions?.[module]?.view) return path;
+    }
+    return "/no-access";
+  }, [currentUser]);
+
+  const updateSubAdminPermissions = useCallback(
+    (employeeId: string, newPermissions: PermissionsMap) => {
+      if (currentUser?.role !== "Admin") return;
+      const target = employees.find((e) => e.id === employeeId);
+      if (!target || target.role !== "Sub-admin") return;
+
+      const oldPerms = target.permissions ?? EMPTY_PERMISSIONS;
+      const changes: string[] = [];
+      for (const mod of MODULE_KEYS) {
+        for (const act of ["view", "add", "edit", "delete"] as const) {
+          if (oldPerms[mod][act] !== newPermissions[mod][act]) {
+            const label = `${MODULE_LABELS[mod]}: ${act}=${newPermissions[mod][act] ? "on" : "off"}`;
+            changes.push(label);
+          }
+        }
+      }
+
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === employeeId ? { ...emp, permissions: newPermissions } : emp
+        )
+      );
+
+      if (changes.length > 0) {
+        logActivity(
+          `Updated ${target.name}'s permissions — ${changes.join("; ")}`
+        );
+      }
+    },
+    [currentUser, employees, logActivity]
+  );
+
+  const createSubAdmin = useCallback(
+    (input: { name: string; email: string; department: string; password: string }): Employee => {
+      const employee: Employee = {
+        id: uid(),
+        name: input.name,
+        email: input.email,
+        password: hashPassword(input.password),
+        role: "Sub-admin",
+        status: "Active",
+        department: input.department,
+        createdAt: new Date().toISOString(),
+        permissions: { ...EMPTY_PERMISSIONS },
+      };
+      setEmployees((prev) => [...prev, employee]);
+      logActivity(
+        `Created Sub-admin account for ${employee.name} (${employee.department})`
+      );
+      return employee;
+    },
+    [logActivity]
+  );
+
+  const updateUserPreferences = useCallback(
+    (prefs: UserPreferences) => {
+      const storedId = readSession();
+      if (!storedId) return;
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === storedId ? { ...emp, preferences: prefs } : emp
+        )
+      );
+    },
+    []
+  );
+
+  const changePassword = useCallback(
+    (currentPassword: string, newPassword: string): { ok: boolean; error?: string } => {
+      const storedId = readSession();
+      if (!storedId) return { ok: false, error: "No active session." };
+      const user = employees.find((emp) => emp.id === storedId);
+      if (!user) return { ok: false, error: "User not found." };
+      if (!verifyPassword(currentPassword, user.password)) {
+        return { ok: false, error: "Current password is incorrect." };
+      }
+      if (newPassword.length < 6) {
+        return { ok: false, error: "Password must be at least 6 characters." };
+      }
+      if (currentPassword === newPassword) {
+        return { ok: false, error: "New password must be different from the current password." };
+      }
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === storedId
+            ? { ...emp, password: hashPassword(newPassword), passwordChangedAt: new Date().toISOString() }
+            : emp
+        )
+      );
+      logActivity(`${user.name} changed their password`);
+      return { ok: true };
+    },
+    [employees, logActivity]
+  );
+
+  const updateCurrentUserProfile = useCallback(
+    (patch: { name?: string; email?: string }): { ok: boolean; error?: string } => {
+      const storedId = readSession();
+      if (!storedId) return { ok: false, error: "No active session." };
+      const user = employees.find((emp) => emp.id === storedId);
+      if (!user) return { ok: false, error: "User not found." };
+
+      if (patch.email && patch.email !== user.email) {
+        const emailTaken = employees.some(
+          (emp) => emp.id !== storedId && emp.email.toLowerCase() === patch.email!.toLowerCase()
+        );
+        if (emailTaken) return { ok: false, error: "This email is already in use." };
+      }
+
+      setEmployees((prev) =>
+        prev.map((emp) =>
+          emp.id === storedId
+            ? { ...emp, ...(patch.name !== undefined && { name: patch.name }), ...(patch.email !== undefined && { email: patch.email }) }
+            : emp
+        )
+      );
+      logActivity(`${user.name} updated their profile`);
+      return { ok: true };
+    },
+    [employees, logActivity]
+  );
+
+  /* ── Vacation & Leaves ─────────────────────────────────────────── */
+
+  const requestLeave = useCallback(
+    (input: {
+      employeeId: string;
+      leaveType: LeaveType;
+      dateFrom: string;
+      dateTo: string;
+      totalDays: number;
+      reason: string;
+      attachments: string[];
+      notifyUsers: string[];
+    }) => {
+      const request: LeaveRequest = {
+        id: uid(),
+        employeeId: input.employeeId,
+        leaveType: input.leaveType,
+        dateFrom: input.dateFrom,
+        dateTo: input.dateTo,
+        totalDays: input.totalDays,
+        reason: input.reason,
+        attachments: input.attachments,
+        notifyUsers: input.notifyUsers,
+        status: "Pending",
+        submittedAt: new Date().toISOString(),
+      };
+      setLeaveRequests((prev) => [request, ...prev]);
+      const employee = employees.find((e) => e.id === input.employeeId);
+      logActivity(
+        `${employee?.name ?? "Employee"} requested ${input.leaveType} (${input.dateFrom} to ${input.dateTo})`
+      );
+    },
+    [employees, logActivity]
+  );
+
+  const cancelLeave = useCallback(
+    (id: string) => {
+      setLeaveRequests((prev) =>
+        prev.map((r) =>
+          r.id === id && r.status === "Pending"
+            ? { ...r, status: "Cancelled" as const, reviewedAt: new Date().toISOString() }
+            : r
+        )
+      );
+      const request = leaveRequests.find((r) => r.id === id);
+      const employee = employees.find((e) => e.id === request?.employeeId);
+      logActivity(`${employee?.name ?? "Employee"} cancelled their ${request?.leaveType ?? "leave"} request`);
+    },
+    [leaveRequests, employees, logActivity]
+  );
+
+  const approveLeave = useCallback(
+    (id: string, comment?: string) => {
+      setLeaveRequests((prev) =>
+        prev.map((r) =>
+          r.id === id && r.status === "Pending"
+            ? {
+                ...r,
+                status: "Approved" as const,
+                reviewedAt: new Date().toISOString(),
+                reviewedBy: currentUser?.id,
+              }
+            : r
+        )
+      );
+      const request = leaveRequests.find((r) => r.id === id);
+      const employee = employees.find((e) => e.id === request?.employeeId);
+      logActivity(
+        `Approved ${employee?.name ?? "employee"}'s ${request?.leaveType ?? "leave"} request` +
+          (comment ? ` — ${comment}` : "")
+      );
+    },
+    [leaveRequests, employees, currentUser, logActivity]
+  );
+
+  const rejectLeave = useCallback(
+    (id: string, reason: string) => {
+      setLeaveRequests((prev) =>
+        prev.map((r) =>
+          r.id === id && r.status === "Pending"
+            ? {
+                ...r,
+                status: "Rejected" as const,
+                reviewedAt: new Date().toISOString(),
+                reviewedBy: currentUser?.id,
+                rejectionReason: reason,
+              }
+            : r
+        )
+      );
+      const request = leaveRequests.find((r) => r.id === id);
+      const employee = employees.find((e) => e.id === request?.employeeId);
+      logActivity(
+        `Rejected ${employee?.name ?? "employee"}'s ${request?.leaveType ?? "leave"} request — ${reason}`
+      );
+    },
+    [leaveRequests, employees, currentUser, logActivity]
+  );
+
+  const updateLeavePolicies = useCallback(
+    (policies: LeavePolicy[]) => {
+      setLeavePolicies(policies);
+      logActivity("Updated leave policy settings");
+    },
+    [logActivity]
+  );
+
+  const getLeaveBalance = useCallback(
+    (employeeId: string): Record<LeaveType, { used: number; remaining: number }> => {
+      const currentYear = new Date().getFullYear();
+      const yearStart = `${currentYear}-01-01`;
+      const yearEnd = `${currentYear}-12-31`;
+      const approvedThisYear = leaveRequests.filter(
+        (r) =>
+          r.employeeId === employeeId &&
+          r.status === "Approved" &&
+          r.dateFrom >= yearStart &&
+          r.dateFrom <= yearEnd
+      );
+
+      const balance: Record<LeaveType, { used: number; remaining: number }> = {
+        "Vacation Leave": { used: 0, remaining: 0 },
+        "Sick Leave": { used: 0, remaining: 0 },
+        "Emergency Leave": { used: 0, remaining: 0 },
+        "Unpaid Leave": { used: 0, remaining: 0 },
+      };
+
+      for (const policy of leavePolicies) {
+        const used = approvedThisYear
+          .filter((r) => r.leaveType === policy.leaveType)
+          .reduce((sum, r) => sum + r.totalDays, 0);
+        balance[policy.leaveType] = {
+          used,
+          remaining: Math.max(0, policy.annualCredits - used),
+        };
+      }
+
+      return balance;
+    },
+    [leaveRequests, leavePolicies]
+  );
+
   const updateEmployeeStatus = useCallback(
     (id: string, status: EmployeeStatus) => {
+      const employee = employees.find((emp) => emp.id === id);
+      if (!employee) return;
+      // Safety: never allow deactivating the last Admin
+      if (employee.role === "Admin" && status !== "Active") {
+        const activeAdminCount = employees.filter(
+          (e) => e.role === "Admin" && e.status === "Active"
+        ).length;
+        if (activeAdminCount <= 1) return;
+      }
       setEmployees((prev) =>
         prev.map((emp) => (emp.id === id ? { ...emp, status } : emp))
       );
-      const employee = employees.find((emp) => emp.id === id);
-      if (employee && employee.id !== currentUser?.id) {
+      if (employee.id !== currentUser?.id) {
         logActivity(`Updated ${employee.name} status to ${status}`);
       }
       if (currentUser && currentUser.id === id && status !== "Active") {
@@ -789,10 +1195,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const deleteEmployee = useCallback(
     (id: string) => {
       const employee = employees.find((emp) => emp.id === id);
-      setEmployees((prev) => prev.filter((emp) => emp.id !== id));
-      if (employee) {
-        logActivity(`Removed ${employee.name} from the team`);
+      if (!employee) return;
+      // Safety: never allow deleting the last Admin
+      if (employee.role === "Admin") {
+        const adminCount = employees.filter((e) => e.role === "Admin").length;
+        if (adminCount <= 1) return;
       }
+      setEmployees((prev) => prev.filter((emp) => emp.id !== id));
+      logActivity(`Removed ${employee.name} from the team`);
     },
     [employees, logActivity]
   );
@@ -912,6 +1322,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       activity,
       reports,
       invoiceNumberingDefaults,
+      leaveRequests,
+      leavePolicies,
       signIn,
       signOut,
       setNewPassword,
@@ -937,6 +1349,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setVAStatus,
       deleteVA,
       restoreVA,
+      hasPermission,
+      updateSubAdminPermissions,
+      createSubAdmin,
+      getFirstAccessiblePath,
+      updateUserPreferences,
+      changePassword,
+      updateCurrentUserProfile,
+      requestLeave,
+      cancelLeave,
+      approveLeave,
+      rejectLeave,
+      updateLeavePolicies,
+      getLeaveBalance,
     }),
     [
       currentUser,
@@ -949,6 +1374,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       activity,
       reports,
       invoiceNumberingDefaults,
+      leaveRequests,
+      leavePolicies,
       signIn,
       signOut,
       setNewPassword,
@@ -974,6 +1401,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setVAStatus,
       deleteVA,
       restoreVA,
+      hasPermission,
+      updateSubAdminPermissions,
+      createSubAdmin,
+      getFirstAccessiblePath,
+      updateUserPreferences,
+      changePassword,
+      updateCurrentUserProfile,
+      requestLeave,
+      cancelLeave,
+      approveLeave,
+      rejectLeave,
+      updateLeavePolicies,
+      getLeaveBalance,
     ]
   );
 

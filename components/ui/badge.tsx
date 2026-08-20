@@ -37,6 +37,7 @@ export function statusBadgeTone(status: string): Tone {
   switch (status) {
     case "Active":
     case "Paid":
+    case "Approved":
       return "ok";
     case "Pending":
     case "Resigned":
@@ -44,7 +45,10 @@ export function statusBadgeTone(status: string): Tone {
       return "warn";
     case "Overdue":
     case "Terminated":
+    case "Rejected":
       return "danger";
+    case "Cancelled":
+      return "neutral";
     default:
       return "neutral";
   }

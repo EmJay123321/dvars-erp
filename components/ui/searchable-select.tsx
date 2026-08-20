@@ -17,6 +17,9 @@ export default function SearchableSelect({
   addNewLabel,
   onAddNew,
   triggerClassName = "",
+  label,
+  hint,
+  clearable = false,
 }: {
   value: string | null;
   options: SearchableOption[];
@@ -25,6 +28,9 @@ export default function SearchableSelect({
   addNewLabel?: string;
   onAddNew?: () => void;
   triggerClassName?: string;
+  label?: string;
+  hint?: string;
+  clearable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -54,17 +60,55 @@ export default function SearchableSelect({
     );
   }, [options, query]);
 
+  const hasLabel = Boolean(label);
+  const displayValue = selected
+    ? selected.label
+    : value
+      ? value
+      : null;
+
   return (
     <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className={`w-full rounded border-b border-dashed border-ink-faint/40 bg-transparent px-1 py-0.5 text-left focus:border-accent focus:outline-none ${
-          value ? "text-ink" : "text-ink-faint/70"
-        } ${triggerClassName}`}
-      >
-        {selected ? selected.label : placeholder}
-      </button>
+      {hasLabel && (
+        <span className="mb-1.5 block text-sm font-medium text-ink">
+          {label}
+        </span>
+      )}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className={`${
+            hasLabel
+              ? `h-10 w-full rounded-xl border bg-surface px-3 text-sm text-left focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 ${
+                  value ? "border-border text-ink" : "border-border text-ink-faint"
+                }`
+              : `w-full rounded border-b border-dashed border-ink-faint/40 bg-transparent px-1 py-0.5 text-left focus:border-accent focus:outline-none ${
+                  value ? "text-ink" : "text-ink-faint/70"
+                }`
+          } ${triggerClassName}`}
+        >
+          {displayValue ?? placeholder}
+        </button>
+        {hasLabel && clearable && value && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect("" as unknown as string);
+              setOpen(false);
+              setQuery("");
+            }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-faint hover:text-ink"
+            title="Clear selection"
+          >
+            &times;
+          </button>
+        )}
+      </div>
+      {hint && hasLabel && (
+        <span className="mt-1 block text-xs text-ink-faint">{hint}</span>
+      )}
 
       {open && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-xl border border-border bg-surface shadow-xl">

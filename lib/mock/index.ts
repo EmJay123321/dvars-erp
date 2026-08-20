@@ -4,6 +4,7 @@ export { initialInvoices } from "./invoices";
 export { initialClients, initialVAs } from "./directory";
 export { initialActivity } from "./activity";
 export { initialReports } from "./reports";
+export { initialLeaveRequests } from "./leaves";
 export {
   revenueByMonth,
   expensesByMonth,

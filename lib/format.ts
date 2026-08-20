@@ -110,6 +110,87 @@ export function weekRangesForMonth(
   return ranges;
 }
 
+/* ── Preference-aware formatting ────────────────────────────────── */
+
+import type { DisplayCurrency, DateFormat } from "./types";
+
+/** Fixed exchange rates from GBP (source of truth). */
+const EXCHANGE_RATES: Record<DisplayCurrency, number> = {
+  GBP: 1,
+  USD: 1.27,
+  PHP: 71.0,
+};
+
+const CURRENCY_SYMBOLS: Record<DisplayCurrency, string> = {
+  GBP: "\u00a3",
+  USD: "$",
+  PHP: "\u20b1",
+};
+
+const CURRENCY_LOCALES: Record<DisplayCurrency, string> = {
+  GBP: "en-GB",
+  USD: "en-US",
+  PHP: "en-PH",
+};
+
+/** Convert a GBP amount to the user's display currency (for display only). */
+export function convertCurrency(amountGBP: number, currency: DisplayCurrency): number {
+  return Math.round(amountGBP * EXCHANGE_RATES[currency] * 100) / 100;
+}
+
+/** Format a currency value in the user's preferred display currency. */
+export function formatCurrencyPref(valueGBP: number, currency: DisplayCurrency): string {
+  const converted = convertCurrency(valueGBP, currency);
+  return (
+    CURRENCY_SYMBOLS[currency] +
+    converted.toLocaleString(CURRENCY_LOCALES[currency], {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
+  );
+}
+
+/** Format an ISO date string according to the user's preferred date format. */
+export function formatDatePref(iso: string, format: DateFormat): string {
+  const d = new Date(iso);
+  if (format === "MM/DD/YYYY") {
+    return d.toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    });
+  }
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+/** Format an ISO datetime string with time, according to the user's preferred date format. */
+export function formatDateTimePref(iso: string, format: DateFormat): string {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const date = formatDatePref(iso, format);
+  return `${date}, ${time}`;
+}
+
+/** Format a date range according to the user's preferred date format. */
+export function formatPeriodPref(startIso: string, endIso: string, format: DateFormat): string {
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  const locale = format === "MM/DD/YYYY" ? "en-US" : "en-GB";
+  const startDay = start.getUTCDate();
+  const startMonth = start.toLocaleDateString(locale, { month: "short" });
+  const endDay = end.getUTCDate();
+  const endMonth = end.toLocaleDateString(locale, { month: "short" });
+  const year = end.getUTCFullYear();
+  if (startMonth === endMonth) {
+    return `${startDay}\u2013${endDay} ${endMonth} ${year}`;
+  }
+  return `${startDay} ${startMonth} \u2013 ${endDay} ${endMonth} ${year}`;
+}
+
 export function monthOptions(count = 12): { label: string; value: string }[] {
   const options: { label: string; value: string }[] = [];
   const now = new Date();
